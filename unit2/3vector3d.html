@@ -19,34 +19,17 @@
 <body>
     <script type="module">
         import {ThreeEngine} from '../js/utils/utils_three.js'
-        import {get_default_lil_gui} from "../js/utils/utils_three.js";
+        import {TransformGizmoEngine} from "../js/utils/utils_transform_gizmo.js";
 
         let engine = ThreeEngine.new_default_3d();
 
-        let gui = get_default_lil_gui()
-        let settings = {
-            x1: 1,
-            x2: 1,
-            x3: 1,
-            y1: -1,
-            y2: 1,
-            y3: 1,
-            z1: -1,
-            z2: -1,
-            z3: 1
-        }
-        gui.add(settings, 'x1', -3, 3);
-        gui.add(settings, 'x2', -3, 3);
-        gui.add(settings, 'x3', -3, 3);
-        gui.add(settings, 'y1', -3, 3);
-        gui.add(settings, 'y2', -3, 3);
-        gui.add(settings, 'y3', -3, 3);
-        gui.add(settings, 'z1', -3, 3);
-        gui.add(settings, 'z2', -3, 3);
-        gui.add(settings, 'z3', -3, 3);
+        let tge = new TransformGizmoEngine(engine);
+        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1,-1, 1], 0.3);
+        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1, 1, 1], 0.3);
+        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [-1, 1, 1], 0.3);
 
         engine.animation_loop(() => {
-            engine.draw_debug_trivector([settings.x1,settings.x2,settings.x3], [settings.y1, settings.y2, settings.y3], [settings.z1, settings.z2, settings.z3], 0x0000ff, 0.4);
+            engine.draw_debug_trivector(tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1], tge.get_gizmo_pose_as_SO3_matrix_and_position(1)[1], tge.get_gizmo_pose_as_SO3_matrix_and_position(2)[1], 0x0000ff, 0.4);
         });
 
     </script>

@@ -20,21 +20,15 @@
     <script type="module">
         import {ThreeEngine} from '../js/utils/utils_three.js'
         import {get_default_lil_gui} from "../js/utils/utils_three.js";
+        import {TransformGizmoEngine} from "../js/utils/utils_transform_gizmo.js";
 
         let engine = ThreeEngine.new_default_3d();
 
-        let gui = get_default_lil_gui()
-        let settings = {
-            x1: 1,
-            x2: 1,
-            x3: 1
-        }
-        gui.add(settings, 'x1', -2, 2);
-        gui.add(settings, 'x2', -2, 2);
-        gui.add(settings, 'x3', -2, 2);
+        let tge = new TransformGizmoEngine(engine);
+        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1,1,1], 0.3)
 
         engine.animation_loop(() => {
-            engine.draw_debug_vector([0,0, 0], [settings.x1, settings.x2, settings.x3]);
+            engine.draw_debug_vector([0,0,0], tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1]);
         });
 
     </script>
