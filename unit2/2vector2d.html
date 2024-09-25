@@ -24,8 +24,8 @@
         let engine = ThreeEngine.new_default_2d();
 
         let tge = new TransformGizmoEngine(engine);
-        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1,-1, 0.0001], 0.3);
-        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1,1, 0.0001], 0.3);
+        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1,0, 0.0001], 0.3);
+        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0,1, 0.0001], 0.3);
 
         engine.animation_loop(() => {
             engine.draw_debug_bivector(tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1], tge.get_gizmo_pose_as_SO3_matrix_and_position(1)[1], 0x0000ff, 0.4);
