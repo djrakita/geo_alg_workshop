@@ -713,8 +713,8 @@ export class ThreeEngine {
         vec1 = convert_2array_to_3array(vec1)
         vec2 = convert_2array_to_3array(vec2)
 
-        this.draw_debug_vector([0,0,0], vec1, undefined, undefined, 0x000000, 0.5);
-        this.draw_debug_vector([0,0,0], vec2, undefined, undefined, 0x000000, 0.5);
+        this.draw_debug_vector([0,0,0], vec1, 0.03, undefined, 0x000000, 0.5);
+        this.draw_debug_vector([0,0,0], vec2, 0.03, undefined, 0x000000, 0.5);
         let point1 = [0,0,0];
         let point2 = vec1
         let point3 = unroll_matrix_to_list(add_matrix_matrix(vec1, vec2));
@@ -731,9 +731,9 @@ export class ThreeEngine {
         vec2 = convert_2array_to_3array(vec2)
         vec3 = convert_2array_to_3array(vec3)
 
-        this.draw_debug_vector([0,0,0], vec1, undefined, undefined, 0x000000, 0.5);
-        this.draw_debug_vector([0,0,0], vec2, undefined, undefined, 0x000000, 0.5);
-        this.draw_debug_vector([0,0,0], vec3, undefined, undefined, 0x000000, 0.5);
+        this.draw_debug_vector([0,0,0], vec1, 0.03, undefined, 0x000000, 0.5);
+        this.draw_debug_vector([0,0,0], vec2, 0.03, undefined, 0x000000, 0.5);
+        this.draw_debug_vector([0,0,0], vec3, 0.03, undefined, 0x000000, 0.5);
 
         let point1 = [0,0,0];
         let point2 = vec1;
