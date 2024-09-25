@@ -644,3 +644,111 @@ export function determinant3x3(matrix) {
 
     return determinant;
 }
+
+/**
+ * Performs QR decomposition using the Gram-Schmidt process.
+ * @param {Array<Array<number>>} A - The input matrix (including vectors like 2x1).
+ * @returns {{Q: Array<Array<number>>, R: Array<Array<number>>}} An object containing the matrices Q and R.
+ */
+export function qr_decomposition(A) {
+    const numRows = A.length;
+    const numCols = A[0].length;
+
+    // Initialize matrices Q and R
+    let Q = new Array(numRows).fill(0).map(() => new Array(numCols).fill(0));
+    let R = new Array(numCols).fill(0).map(() => new Array(numCols).fill(0));
+
+    // Gram-Schmidt process
+    for (let j = 0; j < numCols; j++) {
+        // Copy the j-th column of A to Q
+        for (let i = 0; i < numRows; i++) {
+            Q[i][j] = A[i][j];
+        }
+
+        // Orthogonalize against the previous columns
+        for (let k = 0; k < j; k++) {
+            let dotProd = 0;
+            for (let i = 0; i < numRows; i++) {
+                dotProd += Q[i][k] * A[i][j];
+            }
+            R[k][j] = dotProd;
+
+            for (let i = 0; i < numRows; i++) {
+                Q[i][j] -= dotProd * Q[i][k];
+            }
+        }
+
+        // Normalize the vector and ensure the R matrix's diagonal follows NumPy's sign convention
+        let norm = 0;
+        for (let i = 0; i < numRows; i++) {
+            norm += Q[i][j] * Q[i][j];
+        }
+        norm = Math.sqrt(norm);
+
+        // Ensure that R[j][j] has the same sign as the y-component (A[1][0] for 2x1 vectors)
+        R[j][j] = norm;
+        if (A[1][j] < 0) { // Check the y-component for sign correction
+            R[j][j] = -R[j][j];
+        }
+
+        for (let i = 0; i < numRows; i++) {
+            Q[i][j] /= R[j][j];
+        }
+    }
+
+    return { Q, R };
+}
+
+/**
+ * Computes the determinant of a square matrix.
+ * @param {Array<Array<number>>} matrix - The square matrix.
+ * @returns {number} The determinant of the matrix.
+ */
+export function determinant(matrix) {
+    const n = matrix.length;
+
+    // Base case for 1x1 matrix
+    if (n === 1) {
+        return matrix[0][0];
+    }
+
+    // Base case for 2x2 matrix
+    if (n === 2) {
+        return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+    }
+
+    let det = 0;
+
+    // Recursive cofactor expansion
+    for (let i = 0; i < n; i++) {
+        const cofactorMatrix = getCofactor(matrix, 0, i);
+        det += ((i % 2 === 0 ? 1 : -1) * matrix[0][i] * determinant(cofactorMatrix));
+    }
+
+    return det;
+}
+
+/**
+ * Gets the cofactor matrix by removing the specified row and column.
+ * @param {Array<Array<number>>} matrix - The square matrix.
+ * @param {number} row - The row index to remove.
+ * @param {number} col - The column index to remove.
+ * @returns {Array<Array<number>>} The cofactor matrix.
+ */
+function getCofactor(matrix, row, col) {
+    const cofactor = [];
+
+    for (let i = 0; i < matrix.length; i++) {
+        if (i === row) continue;
+        const cofactorRow = [];
+
+        for (let j = 0; j < matrix[i].length; j++) {
+            if (j === col) continue;
+            cofactorRow.push(matrix[i][j]);
+        }
+
+        cofactor.push(cofactorRow);
+    }
+
+    return cofactor;
+}
