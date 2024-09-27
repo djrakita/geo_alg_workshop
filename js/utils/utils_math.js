@@ -646,57 +646,93 @@ export function determinant3x3(matrix) {
 }
 
 /**
- * Performs QR decomposition using the Gram-Schmidt process.
- * @param {Array<Array<number>>} A - The input matrix (including vectors like 2x1).
- * @returns {{Q: Array<Array<number>>, R: Array<Array<number>>}} An object containing the matrices Q and R.
+ * Performs QR decomposition of a matrix using the NumPy algorithm.
+ * @param {Array<Array<number>>} A - The input matrix.
+ * @param {string} [mode='reduced'] - The mode of decomposition: 'reduced', 'complete', 'r', or 'raw'.
+ * @returns {Object} An object containing Q and R matrices, or just R, or raw decomposition, depending on the mode.
  */
-export function qr_decomposition(A) {
-    const numRows = A.length;
-    const numCols = A[0].length;
+export function qr_decomposition(A, mode = 'reduced') {
+    // Ensure A is a 2D array
+    A = A.map(row => [...row]);
+    const m = A.length;
+    const n = A[0].length;
+    const K = Math.min(m, n);
 
-    // Initialize matrices Q and R
-    let Q = new Array(numRows).fill(0).map(() => new Array(numCols).fill(0));
-    let R = new Array(numCols).fill(0).map(() => new Array(numCols).fill(0));
+    // Initialize matrices
+    let Q = Array(m).fill().map(() => Array(m).fill(0));
+    let R = Array(m).fill().map(() => Array(n).fill(0));
+    let tau = Array(K).fill(0);
 
-    // Gram-Schmidt process
-    for (let j = 0; j < numCols; j++) {
-        // Copy the j-th column of A to Q
-        for (let i = 0; i < numRows; i++) {
-            Q[i][j] = A[i][j];
-        }
+    // Helper function for Householder reflection
+    function householder(x, k) {
+        const norm = Math.sqrt(x.slice(k).reduce((sum, val) => sum + val * val, 0));
+        const s = (x[k] > 0) ? -1 : 1;
+        const u1 = x[k] - s * norm;
+        const w = x.slice(k).map(val => val / u1);
+        w[0] = 1;
+        const tau = -s * u1 / norm;
+        return { w, tau };
+    }
 
-        // Orthogonalize against the previous columns
-        for (let k = 0; k < j; k++) {
-            let dotProd = 0;
-            for (let i = 0; i < numRows; i++) {
-                dotProd += Q[i][k] * A[i][j];
+    // Perform the decomposition
+    for (let k = 0; k < K; k++) {
+        let x = A.map(row => row[k]);
+        let { w, tau: t } = householder(x, k);
+        tau[k] = t;
+
+        // Update A
+        for (let j = k; j < n; j++) {
+            const dot = w.slice(0, m - k).reduce((sum, wi, i) => sum + wi * A[i + k][j], 0);
+            for (let i = k; i < m; i++) {
+                A[i][j] -= tau[k] * w[i - k] * dot;
             }
-            R[k][j] = dotProd;
-
-            for (let i = 0; i < numRows; i++) {
-                Q[i][j] -= dotProd * Q[i][k];
-            }
         }
 
-        // Normalize the vector and ensure the R matrix's diagonal follows NumPy's sign convention
-        let norm = 0;
-        for (let i = 0; i < numRows; i++) {
-            norm += Q[i][j] * Q[i][j];
-        }
-        norm = Math.sqrt(norm);
-
-        // Ensure that R[j][j] has the same sign as the y-component (A[1][0] for 2x1 vectors)
-        R[j][j] = norm;
-        if (A[1][j] < 0) { // Check the y-component for sign correction
-            R[j][j] = -R[j][j];
-        }
-
-        for (let i = 0; i < numRows; i++) {
-            Q[i][j] /= R[j][j];
+        // Store Householder vector
+        for (let i = k + 1; i < m; i++) {
+            R[i][k] = w[i - k];
         }
     }
 
-    return { Q, R };
+    // Extract R
+    for (let i = 0; i < m; i++) {
+        for (let j = 0; j < n; j++) {
+            if (i <= j) {
+                R[i][j] = A[i][j];
+            }
+        }
+    }
+
+    // Compute Q if needed
+    if (mode !== 'r' && mode !== 'raw') {
+        for (let k = K - 1; k >= 0; k--) {
+            for (let j = k; j < m; j++) {
+                Q[j][k] = (j === k) ? 1 - tau[k] : -tau[k] * R[j][k];
+            }
+            for (let i = k + 1; i < m; i++) {
+                for (let j = k; j < m; j++) {
+                    Q[j][i] -= Q[j][k] * R[i][k];
+                }
+            }
+        }
+    }
+
+    // Return results based on mode
+    switch (mode) {
+        case 'reduced':
+            return {
+                Q: Q.map(row => row.slice(0, K)),
+                R: R.slice(0, K)
+            };
+        case 'complete':
+            return { Q, R };
+        case 'r':
+            return { R: R.slice(0, K) };
+        case 'raw':
+            return { R, tau };
+        default:
+            throw new Error("Invalid mode. Use 'reduced', 'complete', 'r', or 'raw'.");
+    }
 }
 
 /**
@@ -714,41 +750,164 @@ export function determinant(matrix) {
 
     // Base case for 2x2 matrix
     if (n === 2) {
-        return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+        return (matrix[0][0] * matrix[1][1]) - (matrix[0][1] * matrix[1][0]);
     }
 
     let det = 0;
-
-    // Recursive cofactor expansion
-    for (let i = 0; i < n; i++) {
-        const cofactorMatrix = getCofactor(matrix, 0, i);
-        det += ((i % 2 === 0 ? 1 : -1) * matrix[0][i] * determinant(cofactorMatrix));
+    for (let j = 0; j < n; j++) {
+        det += matrix[0][j] * cofactor(matrix, 0, j);
     }
 
     return det;
 }
 
 /**
- * Gets the cofactor matrix by removing the specified row and column.
- * @param {Array<Array<number>>} matrix - The square matrix.
- * @param {number} row - The row index to remove.
- * @param {number} col - The column index to remove.
- * @returns {Array<Array<number>>} The cofactor matrix.
+ * Calculates the cofactor of a matrix element.
+ * @param {Array<Array<number>>} matrix - The input matrix.
+ * @param {number} row - The row of the element.
+ * @param {number} col - The column of the element.
+ * @returns {number} The cofactor of the element.
  */
-function getCofactor(matrix, row, col) {
-    const cofactor = [];
+function cofactor(matrix, row, col) {
+    const subMatrix = matrix
+        .filter((_, i) => i !== row)
+        .map(row => row.filter((_, j) => j !== col));
+    return Math.pow(-1, row + col) * determinant(subMatrix);
+}
 
-    for (let i = 0; i < matrix.length; i++) {
-        if (i === row) continue;
-        const cofactorRow = [];
+/**
+ * Calculates the Gram determinant of a matrix A, which is det(A^T A).
+ * @param {Array<Array<number>>} matrix - The input matrix.
+ * @returns {number} The Gram determinant.
+ */
+export function gram_determinant(matrix) {
+    const AT = transpose(matrix);
 
-        for (let j = 0; j < matrix[i].length; j++) {
-            if (j === col) continue;
-            cofactorRow.push(matrix[i][j]);
-        }
+    const ATA = mul_matrix_matrix(AT, matrix);
 
-        cofactor.push(cofactorRow);
+    return determinant(ATA);
+}
+
+export function k_vector_weight(matrix, d) {
+    return Math.sqrt(gram_determinant(matrix)) * determinant(gram_schmidt_with_extra_columns(matrix, d));
+}
+
+/**
+ * Converts a list of n column m-vectors to an m x n matrix.
+ * @param {Array<Array<Array<number>>>} vectors - List of column vectors (each vector is an m-dimensional vector).
+ * @returns {Array<Array<number>>} The resulting m x n matrix.
+ */
+export function column_vectors_to_matrix(vectors) {
+    if (vectors.length === 0) {
+        throw new Error("Input list is empty.");
     }
 
-    return cofactor;
+    const numRows = vectors[0].length;  // The number of rows (m)
+    const numCols = vectors.length;     // The number of vectors (n)
+
+    // Initialize an m x n matrix
+    const matrix = new Array(numRows).fill(0).map(() => new Array(numCols).fill(0));
+
+    // Populate the matrix with the column vectors
+    for (let j = 0; j < numCols; j++) {
+        const vector = vectors[j];
+        if (vector.length !== numRows) {
+            throw new Error("All vectors must have the same number of rows.");
+        }
+
+        for (let i = 0; i < numRows; i++) {
+            matrix[i][j] = vector[i][0];  // Extract the element from the column vector
+        }
+    }
+
+    return matrix;
+}
+
+export function gram_schmidt_with_extra_columns(matrix, numCols, epsilon = 0.000001) {
+    const numRows = matrix.length;
+    let currentCols = matrix[0].length;
+
+    if (numCols < currentCols) {
+        throw new Error("Number of columns in the output matrix must be greater than or equal to the input matrix.");
+    }
+
+    // Initialize Q matrix (m x numCols)
+    let Q = new Array(numRows).fill(0).map(() => new Array(numCols).fill(0));
+
+    // Step 1: Copy the input matrix to the first columns of Q
+    for (let i = 0; i < numRows; i++) {
+        for (let j = 0; j < currentCols; j++) {
+            Q[i][j] = matrix[i][j];
+        }
+    }
+
+    // Gram-Schmidt on the original columns
+    for (let j = 0; j < currentCols; j++) {
+        // Orthogonalize against previous columns
+        for (let k = 0; k < j; k++) {
+            let dotProd = dot_product(getColumn(Q, k), getColumn(Q, j));
+            let projection = mul_matrix_scalar(getColumn(Q, k), dotProd);
+
+            for (let i = 0; i < numRows; i++) {
+                Q[i][j] -= projection[i][0];
+            }
+        }
+
+        // Normalize the vector
+        let norm = Math.sqrt(dot_product(getColumn(Q, j), getColumn(Q, j)));
+        for (let i = 0; i < numRows; i++) {
+            Q[i][j] /= norm;
+        }
+    }
+
+    // Step 2: Generate additional columns if needed
+    if (numCols > currentCols) {
+        for (let j = currentCols; j < numCols; j++) {
+            // Create a one-hot vector with small non-zero elements
+            for (let i = 0; i < numRows; i++) {
+                Q[i][j] = (i === j % numRows) ? 1 : epsilon;
+            }
+
+            // Orthogonalize against all previous columns
+            for (let k = 0; k < j; k++) {
+                let dotProd = dot_product(getColumn(Q, k), getColumn(Q, j));
+                let projection = mul_matrix_scalar(getColumn(Q, k), dotProd);
+
+                for (let i = 0; i < numRows; i++) {
+                    Q[i][j] -= projection[i][0];
+                }
+            }
+
+            // Normalize the vector
+            let norm = Math.sqrt(dot_product(getColumn(Q, j), getColumn(Q, j)));
+            for (let i = 0; i < numRows; i++) {
+                Q[i][j] /= norm;
+            }
+        }
+    }
+
+    return Q;
+}
+
+/**
+ * Gets a specific column from a matrix.
+ * @param {Array<Array<number>>} matrix - The input matrix.
+ * @param {number} colIndex - The index of the column to retrieve.
+ * @returns {Array<Array<number>>} The column vector.
+ */
+function getColumn(matrix, colIndex) {
+    return matrix.map(row => [row[colIndex]]);
+}
+
+/**
+ * Creates a seeded random number generator for determinism.
+ * @param {number} seed - The seed value.
+ * @returns {function(): number} A function that returns a pseudo-random number between 0 and 1.
+ */
+function seededRandom(seed) {
+    let x = Math.sin(seed++) * 10000;
+    return () => {
+        x = Math.sin(seed++) * 10000;
+        return x - Math.floor(x);
+    };
 }

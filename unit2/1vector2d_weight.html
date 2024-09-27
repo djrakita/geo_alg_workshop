@@ -21,10 +21,8 @@
         import {ThreeEngine} from '../js/utils/utils_three.js'
         import {get_default_lil_gui} from "../js/utils/utils_three.js";
         import {TransformGizmoEngine} from "../js/utils/utils_transform_gizmo.js";
-        import {mul_matrix_matrix, transpose} from "../js/utils/utils_math.js";
         import {refresh_displays} from "../js/utils/utils_three.js";
-        import {qr_decomposition} from "../js/utils/utils_math.js";
-        import {determinant} from "../js/utils/utils_math.js";
+        import {k_vector_weight} from "../js/utils/utils_math.js";
 
         let engine = ThreeEngine.new_default_2d();
 
@@ -43,13 +41,15 @@
             engine.draw_debug_vector([0,0], tge.get_gizmo_pose_as_SO2_matrix_and_position(0)[1]);
 
             let m = tge.get_gizmo_pose_as_SO2_matrix_and_position(0)[1];
+            let w = k_vector_weight(m, 3);
 
-            let d = determinant(qr_decomposition(m).R);
-            if (d >= 0) { settings.orientation = '+' }
-            else { settings.orientation = '-' }
-
-            settings.weight = d;
+            let color;
+            if (w >= 0) { settings.orientation = '+'; color = 0x0000ff; }
+            else { settings.orientation = '-'; color = 0xff7300; }
+            settings.weight = w;
             refresh_displays(gui);
+
+            engine.draw_debug_vector([0,0], tge.get_gizmo_pose_as_SO2_matrix_and_position(0)[1], undefined, undefined, color);
         });
 
     </script>
