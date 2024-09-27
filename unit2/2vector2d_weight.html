@@ -32,8 +32,16 @@
         weight: 1,
         orientation: '+'
     };
+    let actions = {
+        reset: () => {
+            tge.set_pose_of_gizmo_SO3_matrix_and_position(0, undefined, [1, 0, 0.0001]);
+            tge.set_pose_of_gizmo_SO3_matrix_and_position(1, undefined, [0, 1, 0.0001]);
+            refresh_displays(gui);
+        }
+    }
     gui.add(settings, 'weight').disable();
     gui.add(settings, 'orientation').disable();
+    gui.add(actions, 'reset');
 
     let tge = new TransformGizmoEngine(engine);
     tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1, 0, 0.0001], 0.3);
