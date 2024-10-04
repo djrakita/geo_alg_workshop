@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Yale Geometric Algebra Workshop</title>
+    <script src="../../js/setup/setup_mathjax.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+<script type="module">
+    import {ThreeEngine} from '../js/utils/utils_three.js'
+    import {get_default_lil_gui} from "../js/utils/utils_three.js";
+    import {column_vectors_to_matrix} from "../js/utils/utils_math.js";
+    import {k_vector_weight} from "../js/utils/utils_math.js";
+    import {refresh_displays} from "../js/utils/utils_three.js";
+    import {mul_matrix_scalar} from "../js/utils/utils_math.js";
+
+    let engine = ThreeEngine.new_default_3d();
+
+    let gui = get_default_lil_gui();
+    let settings = {
+        x1:1,
+        y1:0,
+        z1:0,
+        x2:0,
+        y2:1,
+        z2:0,
+        s1:1,
+        s2:1,
+        weight: 1,
+        orientation: '+'
+    };
+    let actions = {
+        reset: () => {
+            settings.x1 = 1;
+            settings.y1 = 0;
+            settings.z1 = 0;
+            settings.x2 = 0;
+            settings.y2 = 1;
+            settings.z2 = 0;
+            settings.s1 = 1;
+            settings.s2 = 1;
+            refresh_displays(gui);
+        }
+    }
+    gui.add(settings, 'x1', -5, 5).disable();
+    gui.add(settings, 'y1', -5, 5).disable();
+    gui.add(settings, 'z1', -5, 5).disable();
+    gui.add(settings, 'x2', -5, 5).disable();
+    gui.add(settings, 'y2', -5, 5).disable();
+    gui.add(settings, 'z2', -5, 5).disable();
+    gui.add(settings, 's1', -2, 2);
+    gui.add(settings, 's2', -2, 2);
+    gui.add(settings, 'weight').disable();
+    gui.add(settings, 'orientation').disable();
+    gui.add(actions, 'reset');
+
+    engine.animation_loop(() => {
+        let m1 = mul_matrix_scalar([[settings.x1], [settings.y1], [settings.z1]], settings.s1);
+        let m2 = mul_matrix_scalar([[settings.x2], [settings.y2], [settings.z2]], settings.s2);
+
+        let m = column_vectors_to_matrix([m1, m2]);
+        let w = k_vector_weight(m, 3);
+
+        let color;
+        if (w >= 0) { settings.orientation = '+'; color = 0x0000ff; }
+        else { settings.orientation = '-'; color = 0xff7300; }
+        settings.weight = w;
+        refresh_displays(gui);
+
+        engine.draw_debug_bivector(m1, m2, color, 0.4);
+    });
+
+</script>
+</body>
+</html>
