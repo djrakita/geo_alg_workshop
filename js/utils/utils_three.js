@@ -709,12 +709,12 @@ export class ThreeEngine {
         this.num_quadrilateral_objects_used_on_curr_frame++;
     }
 
-    draw_debug_bivector(vec1, vec2, color=0x00ffff, opacity=1.0) {
+    draw_debug_bivector(vec1, vec2, color=0x00ffff, opacity=1.0, tail_width=0.02) {
         vec1 = convert_2array_to_3array(vec1)
         vec2 = convert_2array_to_3array(vec2)
 
-        this.draw_debug_vector([0,0,0], vec1, 0.03, undefined, 0x000000, 0.5);
-        this.draw_debug_vector([0,0,0], vec2, 0.03, undefined, 0x000000, 0.5);
+        this.draw_debug_vector([0,0,0], vec1, tail_width, undefined, 0x000000, 0.5);
+        this.draw_debug_vector([0,0,0], vec2, tail_width, undefined, 0x000000, 0.5);
         let point1 = [0,0,0];
         let point2 = vec1
         let point3 = unroll_matrix_to_list(add_matrix_matrix(vec1, vec2));
@@ -726,14 +726,14 @@ export class ThreeEngine {
         this.draw_debug_line(point4, point1, false, 0.002, 0x00000, 0.5);
     }
 
-    draw_debug_trivector(vec1, vec2, vec3, color=0x00ffff, opacity=1.0) {
+    draw_debug_trivector(vec1, vec2, vec3, color=0x00ffff, opacity=1.0, tail_width=0.02) {
         vec1 = convert_2array_to_3array(vec1)
         vec2 = convert_2array_to_3array(vec2)
         vec3 = convert_2array_to_3array(vec3)
 
-        this.draw_debug_vector([0,0,0], vec1, 0.03, undefined, 0x000000, 0.5);
-        this.draw_debug_vector([0,0,0], vec2, 0.03, undefined, 0x000000, 0.5);
-        this.draw_debug_vector([0,0,0], vec3, 0.03, undefined, 0x000000, 0.5);
+        this.draw_debug_vector([0,0,0], vec1, tail_width, undefined, 0x000000, 0.5);
+        this.draw_debug_vector([0,0,0], vec2, tail_width, undefined, 0x000000, 0.5);
+        this.draw_debug_vector([0,0,0], vec3, tail_width, undefined, 0x000000, 0.5);
 
         let point1 = [0,0,0];
         let point2 = vec1;

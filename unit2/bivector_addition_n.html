@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Yale Geometric Algebra Workshop</title>
+    <script src="../../js/setup/setup_mathjax.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+<script type="module">
+    import {ThreeEngine} from '../js/utils/utils_three.js'
+    import {get_default_lil_gui} from "../js/utils/utils_three.js";
+
+    let engine = ThreeEngine.new_default_3d();
+
+    let gui = get_default_lil_gui();
+    let settings = {
+        weight: 1,
+        orientation: '+'
+    };
+    gui.add(settings, 'weight').disable();
+    gui.add(settings, 'orientation').disable();
+
+    let a1 = [[0.10159581], [-0.41819052], [0.78589391]];
+    let a2 = [[0.41629565], [0.02165521], [0.79258618]];
+
+    let b1 = [[-0.74882938], [-0.89706559], [-0.94024758]];
+    let b2 = [[-0.58551424], [-0.11838031], [-0.08633355]];
+
+    let r1 = [[0.78081706], [0.63854491], [0.65006547]];
+    let r2 = [[0.6134598], [0.16830393], [-0.42741253]];
+
+    engine.animation_loop(() => {
+        engine.draw_debug_bivector(a1, a2);
+        engine.draw_debug_bivector(b1, b2, 0xff4422);
+        engine.draw_debug_bivector(r1, r2, 0x00ff33);
+    });
+
+</script>
+</body>
+</html>

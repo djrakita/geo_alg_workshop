@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Yale Geometric Algebra Workshop</title>
+    <script src="../../js/setup/setup_mathjax.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+<script type="module">
+    import {ThreeEngine} from '../js/utils/utils_three.js'
+    import {get_default_lil_gui} from "../js/utils/utils_three.js";
+    import {transpose} from "../js/utils/utils_math.js";
+    import {k_vector_weight} from "../js/utils/utils_math.js";
+    import {refresh_displays} from "../js/utils/utils_three.js";
+
+    let engine = ThreeEngine.new_default_3d();
+
+    let gui = get_default_lil_gui();
+    let settings = {
+        weight_a: 1,
+        weight_b: 1
+    };
+    gui.add(settings, 'weight_a').disable();
+    gui.add(settings, 'weight_b').disable();
+
+    let a1 = [0.10159581, -0.41819052, 0.78589391];
+    let a2 = [0.41629565, 0.02165521, 0.79258618];
+
+    let b1 = [-0.74882938, -0.89706559, -0.94024758];
+    let b2 = [-0.58551424, -0.11838031, -0.08633355];
+
+    let A = transpose([a1, a2]);
+    let B = transpose([b1, b2]);
+
+    engine.animation_loop(() => {
+        engine.draw_debug_bivector(a1, a2, undefined, undefined, 0.015);
+        engine.draw_debug_bivector(b1, b2, 0xff5622, undefined, 0.015);
+
+        let weight_a = k_vector_weight(A, 3);
+        let weight_b = k_vector_weight(B, 3);
+
+        settings.weight_a = weight_a;
+        settings.weight_b = weight_b;
+        refresh_displays(gui);
+    });
+
+</script>
+</body>
+</html>

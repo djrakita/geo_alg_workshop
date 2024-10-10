@@ -788,6 +788,12 @@ export function gram_determinant(matrix) {
     return determinant(ATA);
 }
 
+/**
+ *
+ * @param matrix
+ * @param d - the dimensionality of the vector space
+ * @returns {number}
+ */
 export function k_vector_weight(matrix, d) {
     return Math.sqrt(gram_determinant(matrix)) * determinant(gram_schmidt_with_extra_columns(matrix, d));
 }
