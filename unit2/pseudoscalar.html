@@ -19,8 +19,6 @@
         import {ThreeEngine} from '../js/utils/utils_three.js'
         import {get_default_lil_gui} from "../js/utils/utils_three.js";
         import {mul_matrix_scalar} from "../js/utils/utils_math.js";
-        import {k_blade_weight} from "../js/utils/utils_geo_alg.js";
-        import {column_vectors_to_matrix} from "../js/utils/utils_math.js";
         import {refresh_displays} from "../js/utils/utils_three.js";
 
         let engine = ThreeEngine.new_default_3d();
@@ -36,13 +34,11 @@
                 refresh_displays(gui);
             }
         }
-        
+
         let gui = get_default_lil_gui();
         gui.add(settings, 'scale', -3.0, 3.0);
         gui.add(settings, 'weight').disable();
         gui.add(actions, 'reset');
-
-
 
         let v1 = [1, 0, 0];
         let v2 = [0, 1, 0];
