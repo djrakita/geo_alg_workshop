@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Yale Geometric Algebra Workshop</title>
+    <script src="../../js/setup/setup_mathjax.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <script type="module">
+
+        import {column_vectors_to_matrix} from "../js/utils/utils_math.js";
+        import {get_columns} from "../js/utils/utils_math.js";
+        import {get_rows} from "../js/utils/utils_math.js";
+        import {k_blade_weight} from "../js/utils/utils_geo_alg.js";
+        import {k_blade_grade} from "../js/utils/utils_geo_alg.js";
+        import {k_blade_scalar_product} from "../js/utils/utils_geo_alg.js";
+        import {k_blade_reversion} from "../js/utils/utils_geo_alg.js";
+        import {k_blade_squared_norm} from "../js/utils/utils_geo_alg.js";
+        import {k_blade_angle} from "../js/utils/utils_geo_alg.js";
+
+        let v1 = [[1.],[2.],[3.]];
+        let v2 = [4.,5.,6.];
+
+        let y1 = [1.1,2.,1.2];
+        let y2 = [-1.4,1.1,5.6];
+
+        let m = column_vectors_to_matrix([v1, v2]);
+        console.log(m);
+
+        let m2 = column_vectors_to_matrix([y1, y2]);
+
+        let columns = get_columns(m);
+        console.log(columns);
+
+        let rows = get_rows(m);
+        console.log(rows);
+
+        let v = k_blade_weight(m);
+        console.log(v);
+
+        let grade = k_blade_grade(m);
+        console.log(grade);
+
+        let sp = k_blade_scalar_product(m, m2);
+        console.log(sp);
+
+        sp = k_blade_scalar_product(m2, m);
+        console.log(sp);
+
+        console.log(k_blade_reversion(m));
+
+        console.log(k_blade_squared_norm(m));
+
+        console.log(k_blade_grade(5.0));
+
+        console.log(k_blade_angle(m, m2));
+
+    </script>
+</body>
+</html>

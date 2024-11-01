@@ -816,7 +816,7 @@ export function column_vectors_to_matrix(vectors) {
 
     // Populate the matrix with the column vectors
     for (let j = 0; j < numCols; j++) {
-        const vector = vectors[j];
+        const vector = roll_list_into_column_vec_matrix(vectors[j]);
         if (vector.length !== numRows) {
             throw new Error("All vectors must have the same number of rows.");
         }
@@ -916,4 +916,66 @@ function seededRandom(seed) {
         x = Math.sin(seed++) * 10000;
         return x - Math.floor(x);
     };
+}
+
+/**
+ * Extracts all columns from a matrix.
+ * @param {Array<Array<number>>} matrix - The input matrix.
+ * @returns {Array<Array<Array<number>>>} An array of column vectors, where each column is represented as a nx1 matrix.
+ * @throws {Error} If the matrix is empty or not well-formed.
+ */
+export function get_columns(matrix) {
+    // Check if matrix is empty or malformed
+    if (!matrix || matrix.length === 0 || !matrix[0] || !Array.isArray(matrix[0])) {
+        throw new Error("Matrix must be a non-empty 2D array");
+    }
+
+    const numRows = matrix.length;
+    const numCols = matrix[0].length;
+    const columns = [];
+
+    // Extract each column as a nx1 matrix
+    for (let j = 0; j < numCols; j++) {
+        let column = new Array(numRows);
+        for (let i = 0; i < numRows; i++) {
+            column[i] = [matrix[i][j]];
+        }
+        columns.push(column);
+    }
+
+    return columns;
+}
+
+/**
+ * Extracts all rows from a matrix.
+ * @param {Array<Array<number>>} matrix - The input matrix.
+ * @returns {Array<Array<Array<number>>>} An array of row vectors, where each row is represented as a 1xn matrix.
+ * @throws {Error} If the matrix is empty or not well-formed.
+ */
+export function get_rows(matrix) {
+    // Check if matrix is empty or malformed
+    if (!matrix || matrix.length === 0 || !matrix[0] || !Array.isArray(matrix[0])) {
+        throw new Error("Matrix must be a non-empty 2D array");
+    }
+
+    // Convert each row into a 1xn matrix format
+    return matrix.map(row => [row]);
+}
+
+/**
+ * Creates an m x n matrix filled with zeros.
+ * @param {number} m - The number of rows.
+ * @param {number} n - The number of columns.
+ * @returns {Array<Array<number>>} The m x n zero matrix.
+ */
+export function zeros_matrix(m, n) {
+    let out = [];
+    for (let i = 0; i < m; i++) {
+        let row = [];
+        for (let j = 0; j < n; j++) {
+            row.push(0.0);
+        }
+        out.push(row);
+    }
+    return out;
 }
