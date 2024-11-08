@@ -83,6 +83,7 @@ export function k_blade_angle(blade_matrix_a, blade_matrix_b) {
     return Math.acos(n / d);
 }
 
+
 export function contraction_one_blade_and_two_blade(one_blade, two_blade_matrix) {
     let a = roll_list_into_column_vec_matrix(one_blade)
     let tmp = get_columns(two_blade_matrix);
