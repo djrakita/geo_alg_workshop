@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Yale Geometric Algebra Workshop</title>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <script type="module">
+        import {ThreeEngine} from '../js/utils/utils_three.js'
+        import {get_default_lil_gui} from "../js/utils/utils_three.js";
+        import {column_vectors_to_matrix} from "../js/utils/utils_math.js";
+        import {contraction_one_blade_and_two_blade} from "../js/utils/utils_geo_alg.js";
+        import {mul_matrix_scalar} from "../js/utils/utils_math.js";
+        import {refresh_displays} from "../js/utils/utils_three.js";
+        import {TransformGizmoEngine} from "../js/utils/utils_transform_gizmo.js";
+
+        let engine = ThreeEngine.new_default_3d();
+
+        let actions = {
+            reset: () => {
+                settings.s1 = 1;
+                settings.s2 = 1;
+                settings.x = 1;
+                settings.y = 1;
+                settings.z = 1;
+                refresh_displays(gui);
+            }
+        }
+
+        let settings = {
+            s1: 1,
+            s2: 1,
+            x:1,
+            y:1,
+            z:1
+        }
+        let gui = get_default_lil_gui();
+        gui.add(settings, 's1', -2, 2)
+        gui.add(settings, 's2', -2, 2)
+        gui.add(actions, 'reset')
+
+        let tge = new TransformGizmoEngine(engine);
+        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1,1,1], 0.5);
+
+        engine.animation_loop(() => {
+            let v = tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1];
+            engine.draw_debug_vector([0,0,0], v, 0.02, undefined, 0x333333);
+
+            let b1 = mul_matrix_scalar([1, 0, 0], settings.s1);
+            let b2 = mul_matrix_scalar([0, 1, 0], settings.s2);
+            let b = column_vectors_to_matrix([b1, b2]);
+
+            engine.draw_debug_bivector(b1, b2);
+
+            let res = contraction_one_blade_and_two_blade(v, b);
+            engine.draw_debug_vector([0,0,0], res, 0.02)
+        });
+
+    </script>
+</body>
+</html>

@@ -4,7 +4,7 @@ import {
     dot_product,
     get_columns,
     gram_determinant,
-    gram_schmidt_with_extra_columns,
+    gram_schmidt_with_extra_columns, mul_matrix_scalar, roll_list_into_column_vec_matrix, sub_matrix_matrix,
     zeros_matrix
 } from "./utils_math.js";
 
@@ -81,4 +81,19 @@ export function k_blade_angle(blade_matrix_a, blade_matrix_b) {
     let norm_b = k_blade_norm(blade_matrix_b);
     let d = norm_a * norm_b;
     return Math.acos(n / d);
+}
+
+export function contraction_one_blade_and_two_blade(one_blade, two_blade_matrix) {
+    let a = roll_list_into_column_vec_matrix(one_blade)
+    let tmp = get_columns(two_blade_matrix);
+    let b = tmp[0];
+    let c = tmp[1];
+
+    let d1 = dot_product(a, b);
+    let t1 = mul_matrix_scalar(c, d1);
+
+    let d2 = dot_product(a, c);
+    let t2 = mul_matrix_scalar(b, d2);
+
+    return sub_matrix_matrix(t1, t2);
 }
