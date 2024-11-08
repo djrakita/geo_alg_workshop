@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Yale Geometric Algebra Workshop</title>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <script type="module">
+        import {ThreeEngine} from '../js/utils/utils_three.js'
+        import {get_default_lil_gui} from "../js/utils/utils_three.js";
+        import {add_matrix_matrix, mul_matrix_scalar} from "../js/utils/utils_math.js";
+        import {column_vectors_to_matrix} from "../js/utils/utils_math.js";
+        import {k_blade_weight} from "../js/utils/utils_geo_alg.js";
+        import {refresh_displays} from "../js/utils/utils_three.js";
+
+        let engine = ThreeEngine.new_default_3d();
+
+        let settings = {
+            display_bivectors: false
+        }
+        let gui = get_default_lil_gui();
+        gui.add(settings, 'display_bivectors')
+
+        let f_1 = [1, 0, 0]
+        let c_1 = [0, 2, 0]
+        let d_1 = [0, 0, 1]
+
+        engine.animation_loop(() => {
+            engine.draw_debug_vector([0,0,0], c_1, 0.04, undefined, 0x333333);
+            engine.draw_debug_vector([0,0,0], d_1, 0.04, undefined, 0x333333);
+
+            if (settings.display_bivectors) {
+                engine.draw_debug_bivector(f_1, c_1, 0x00eeff)
+                engine.draw_debug_bivector(f_1, d_1, 0xffee00)
+            }
+        });
+
+    </script>
+</body>
+</html>
