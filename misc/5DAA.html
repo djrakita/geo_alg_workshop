@@ -28,8 +28,8 @@
         import {refresh_displays} from "../js/utils/utils_three.js";
         import {set_object_orientation_from_wxyz_quaternion} from "../js/utils/utils_transforms.js";
 
-        let center1_y = -6;
-        let center2_y = -3;
+        let center1_y = -5;
+        let center2_y = -2.5;
 
         let center1 = [[0], [center1_y], [0]];
         let center2 = [[0], [center2_y], [0]];
@@ -64,20 +64,21 @@
         // engine.draw_debug_sphere(center1, 1, undefined, 0.2)
         // engine.draw_debug_grid_plane(center1, [1, 0, 0], [0, 1, 0], undefined, undefined, undefined, 0.02, undefined, false)
         // engine.draw_debug_grid_plane(center1, [0, 1, 0], [0, 0, 1], undefined, undefined, undefined, 0.02, undefined, false)
-        engine.draw_debug_number_line(center1, [1, 0, 0], undefined, undefined, 0xee0000)
-        engine.draw_debug_number_line(center1, [0, 1, 0], undefined, undefined, 0x00ee00)
-        engine.draw_debug_number_line(center1, [0, 0, 1], undefined, undefined, 0x0000ee)
-        // engine.draw_debug_grid_plane(center2, [1, 0, 0], [0, 1, 0])
-
-        engine.draw_debug_number_line(center2, [1, 0, 0], undefined, undefined, 0xee0000)
-        engine.draw_debug_number_line(center2, [0, 1, 0], undefined, undefined, 0x00ee00)
 
         tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center1_y, 1], 0.3)
         tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center2_y + 1, 0], 0.3)
 
         engine.animation_loop(() => {
+            engine.draw_debug_number_line(center1, [1, 0, 0], undefined, undefined, 0xee0000)
+            engine.draw_debug_number_line(center1, [0, 1, 0], undefined, undefined, 0x00ee00)
+            engine.draw_debug_number_line(center1, [0, 0, 1], undefined, undefined, 0x0000ee)
+
+            engine.draw_debug_number_line(center2, [1, 0, 0], undefined, undefined, 0xee0000)
+            engine.draw_debug_number_line(center2, [0, 1, 0], undefined, undefined, 0x00ee00)
+
             let point1 = tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1]
             let point2 = tge.get_gizmo_pose_as_SO3_matrix_and_position(1)[1]
+            point2[2][0] = 0;
             // let vec1 = sub_matrix_matrix(point1, center1);
             // let vec1_normalized = mul_matrix_scalar(normalized_matrix(vec1), 1.0);
             engine.draw_debug_vector(center1, point1, 0.02, undefined, 0x444444)
