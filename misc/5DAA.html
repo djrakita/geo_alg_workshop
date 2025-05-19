@@ -22,11 +22,11 @@
         import {TransformGizmoEngine} from "../js/utils/utils_transform_gizmo.js";
         import {sub_matrix_matrix} from "../js/utils/utils_math.js";
         import {normalized_matrix} from "../js/utils/utils_math.js";
-        import {add_matrix_matrix} from "../js/utils/utils_math.js";
         import {mul_matrix_scalar} from "../js/utils/utils_math.js";
         import {get_default_lil_gui} from "../js/utils/utils_three.js";
         import {refresh_displays} from "../js/utils/utils_three.js";
         import {set_object_orientation_from_wxyz_quaternion} from "../js/utils/utils_transforms.js";
+        import {add_matrix_matrix} from "../js/utils/utils_math.js";
 
         let center1_y = -5;
         let center2_y = -2.5;
@@ -79,10 +79,18 @@
             let point1 = tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1]
             let point2 = tge.get_gizmo_pose_as_SO3_matrix_and_position(1)[1]
             point2[2][0] = 0;
-            // let vec1 = sub_matrix_matrix(point1, center1);
-            // let vec1_normalized = mul_matrix_scalar(normalized_matrix(vec1), 1.0);
-            engine.draw_debug_vector(center1, point1, 0.02, undefined, 0x444444)
-            engine.draw_debug_vector(center2, point2, 0.02, undefined, 0x444444)
+
+            let v1 = sub_matrix_matrix(point1, center1);
+            let v1n = normalized_matrix(v1);
+
+            let v2 = sub_matrix_matrix(point2, center2);
+            let v2n = normalized_matrix(v2);
+
+            engine.draw_debug_vector(center1, point1, 0.005, undefined, 0x222222)
+            engine.draw_debug_vector(center2, point2, 0.005, undefined, 0x222222)
+
+            engine.draw_debug_vector(center1, add_matrix_matrix(center1, v1n), 0.02, undefined, 0xeeee00)
+            engine.draw_debug_vector(center2, add_matrix_matrix(center2, v2n), 0.02, undefined, 0xeeee00)
 
             let vec1 = sub_matrix_matrix(point1, center1);
             let rot_axis = mul_matrix_scalar(normalized_matrix(vec1), 1.0);
