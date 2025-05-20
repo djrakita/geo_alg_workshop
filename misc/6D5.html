@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>6D Rotation Representation</title>
+    <title>6D5 Rotation Representation</title>
     <script src="../../js/setup/setup_mathjax.js"></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
@@ -48,7 +48,6 @@
             'v1_x': 1,
             'v1_y': 0,
             'v1_z': 0,
-            'v2_x': 0,
             'v2_y': 1,
             'v2_z': 0,
         };
@@ -56,7 +55,6 @@
         gui.add(settings, 'v1_x').disable()
         gui.add(settings, 'v1_y').disable()
         gui.add(settings, 'v1_z').disable()
-        gui.add(settings, 'v2_x').disable()
         gui.add(settings, 'v2_y').disable()
         gui.add(settings, 'v2_z').disable()
         gui.add(actions, 'reset')
@@ -76,6 +74,8 @@
 
             let point1 = tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1]
             let point2 = tge.get_gizmo_pose_as_SO3_matrix_and_position(1)[1]
+            point2[0][0] = 0;
+            tge.set_position_of_gizmo(1, [0, point2[1][0], point2[2][0]]);
 
             let vec1 = sub_matrix_matrix(point1, center1);
             let vec2 = sub_matrix_matrix(point2, center1);
@@ -88,14 +88,11 @@
 
             engine.draw_debug_bivector(vec1n, vec2n, undefined, undefined, undefined, center1);
 
-            let a = unroll_matrix_to_list(vec1n);
-            let b = unroll_matrix_to_list(vec2n);
 
             settings.v1_x = vec1n[0];
             settings.v1_y = vec1n[1];
             settings.v1_z = vec1n[2];
 
-            settings.v2_x = vec2n[0];
             settings.v2_y = vec2n[1];
             settings.v2_z = vec2n[2];
 
