@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AA Rotation Representation</title>
+    <script src="../../js/setup/setup_mathjax.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <script type="module">
+        import {ThreeEngine} from '../js/utils/utils_three.js'
+        import {TransformGizmoEngine} from "../js/utils/utils_transform_gizmo.js";
+        import {sub_matrix_matrix} from "../js/utils/utils_math.js";
+        import {normalized_matrix} from "../js/utils/utils_math.js";
+        import {mul_matrix_scalar} from "../js/utils/utils_math.js";
+        import {get_default_lil_gui} from "../js/utils/utils_three.js";
+        import {refresh_displays} from "../js/utils/utils_three.js";
+        import {set_object_orientation_from_wxyz_quaternion} from "../js/utils/utils_transforms.js";
+        import {add_matrix_matrix} from "../js/utils/utils_math.js";
+
+        let center1_y = -2.5;
+        // let center2_y = -2.5;
+
+        let center1 = [[0], [center1_y], [0]];
+        // let center2 = [[0], [center2_y], [0]];
+
+        let engine = ThreeEngine.new_default_3d();
+
+        let actions = {
+            reset: () => {
+                tge.set_position_of_gizmo(0, [0, center1_y, 1]);
+                // tge.set_position_of_gizmo(1, [0, center2_y + 1, 0]);
+                settings.angle = 0;
+                refresh_displays(gui);
+            }
+        }
+        let settings = {
+            'rot_axis_x': 0,
+            'rot_axis_y': 0,
+            'rot_axis_z': 0,
+            'angle': 0,
+        };
+        let gui = get_default_lil_gui();
+        gui.add(settings, 'rot_axis_x').disable()
+        gui.add(settings, 'rot_axis_y').disable()
+        gui.add(settings, 'rot_axis_z').disable()
+        gui.add(settings, 'angle', -3.14, 3.14)
+        gui.add(actions, 'reset')
+
+        let tge = new TransformGizmoEngine(engine);
+
+        engine.add_suzanne_monkey_as_mesh_object(0x00eeee);
+        engine.toggle_mesh_object_wireframe_visibility(0);
+        engine.set_mesh_object_visibility(0, false);
+        // engine.draw_debug_sphere(center1, 1, undefined, 0.2)
+        // engine.draw_debug_grid_plane(center1, [1, 0, 0], [0, 1, 0], undefined, undefined, undefined, 0.02, undefined, false)
+        // engine.draw_debug_grid_plane(center1, [0, 1, 0], [0, 0, 1], undefined, undefined, undefined, 0.02, undefined, false)
+
+        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center1_y, 1], 0.3)
+        // tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center2_y + 1, 0], 0.3)
+
+        engine.animation_loop(() => {
+            engine.draw_debug_number_line(center1, [1, 0, 0], undefined, undefined, 0xee0000)
+            engine.draw_debug_number_line(center1, [0, 1, 0], undefined, undefined, 0x00ee00)
+            engine.draw_debug_number_line(center1, [0, 0, 1], undefined, undefined, 0x0000ee)
+
+            let point1 = tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1]
+
+            let v1 = sub_matrix_matrix(point1, center1);
+            let v1n = normalized_matrix(v1);
+
+            engine.draw_debug_vector(center1, point1, 0.005, undefined, 0x222222)
+
+            engine.draw_debug_vector(center1, add_matrix_matrix(center1, v1n), 0.02, undefined, 0xeeee00)
+
+            let vec1 = sub_matrix_matrix(point1, center1);
+            let rot_axis = mul_matrix_scalar(normalized_matrix(vec1), 1.0);
+            engine.draw_debug_vector([0,0,0], rot_axis, 0.02, undefined, 0x00eeee);
+            settings.rot_axis_x = rot_axis[0][0];
+            settings.rot_axis_y = rot_axis[1][0];
+            settings.rot_axis_z = rot_axis[2][0];
+
+            // let vec2 = sub_matrix_matrix(point2, center2);
+            // let x = vec2[1][0];
+            // let y = -vec2[0][0];
+            // let atan2 = Math.atan2(y, x);
+            // settings.angle = atan2;
+            // tge.set_position_of_gizmo(1, [point2[0][0], point2[1][0], 0]);
+
+            let qw = Math.cos(settings.angle / 2.0);
+            let qx = rot_axis[0][0]*Math.sin(settings.angle / 2.0);
+            let qy = rot_axis[1][0]*Math.sin(settings.angle / 2.0);
+            let qz = rot_axis[2][0]*Math.sin(settings.angle / 2.0);
+
+            set_object_orientation_from_wxyz_quaternion(engine, 0, [qw, qx, qy, qz]);
+
+            refresh_displays(gui);
+        });
+
+    </script>
+</body>
+</html>
