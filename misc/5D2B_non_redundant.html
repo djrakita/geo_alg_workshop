@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>5D2B Rotation Representation</title>
+    <script src="../../js/setup/setup_mathjax.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+<script type="module">
+    import {ThreeEngine} from '../js/utils/utils_three.js'
+    import {TransformGizmoEngine} from "../js/utils/utils_transform_gizmo.js";
+    import {sub_matrix_matrix} from "../js/utils/utils_math.js";
+    import {normalized_matrix} from "../js/utils/utils_math.js";
+    import {add_matrix_matrix} from "../js/utils/utils_math.js";
+    import {mul_matrix_scalar} from "../js/utils/utils_math.js";
+    import {get_default_lil_gui} from "../js/utils/utils_three.js";
+    import {refresh_displays} from "../js/utils/utils_three.js";
+    import {set_object_orientation_from_wxyz_quaternion} from "../js/utils/utils_transforms.js";
+    import {unroll_matrix_to_list} from "../js/utils/utils_math.js";
+
+    let center1_y = -2.5;
+
+    let center1 = [[0], [center1_y], [0]];
+
+    let engine = ThreeEngine.new_default_3d();
+
+    let actions = {
+        reset: () => {
+            tge.set_position_of_gizmo(0, [1, center1_y, 0]);
+            tge.set_position_of_gizmo(1, [0, center1_y + 1, 0]);
+            refresh_displays(gui);
+        }
+    }
+    let settings = {
+        'v1_x': 1,
+        'v1_y': 0,
+        'v1_z': 0,
+        'v2_y': 1,
+        'v2_z': 0,
+        'qw': 1,
+        'qx': 0,
+        'qy': 0,
+        'qz': 0,
+    };
+    let gui = get_default_lil_gui();
+    gui.add(settings, 'v1_x').disable()
+    gui.add(settings, 'v1_y').disable()
+    gui.add(settings, 'v1_z').disable()
+    gui.add(settings, 'v2_y').disable()
+    gui.add(settings, 'v2_z').disable()
+    gui.add(settings, 'qw').disable()
+    gui.add(settings, 'qx').disable()
+    gui.add(settings, 'qy').disable()
+    gui.add(settings, 'qz').disable()
+    gui.add(actions, 'reset')
+
+    let tge = new TransformGizmoEngine(engine)
+    tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1, center1_y, 0], 0.3);
+    tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center1_y + 1, 0], 0.3);
+
+    engine.add_suzanne_monkey_as_mesh_object(0x00eeee);
+    engine.toggle_mesh_object_wireframe_visibility(0);
+    engine.set_mesh_object_visibility(0, false);
+
+    engine.animation_loop(() => {
+        engine.draw_debug_number_line(center1, [1, 0, 0], undefined, undefined, 0xee0000)
+        engine.draw_debug_number_line(center1, [0, 1, 0], undefined, undefined, 0x00ee00)
+        engine.draw_debug_number_line(center1, [0, 0, 1], undefined, undefined, 0x0000ee)
+
+        let point1 = tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1]
+        let point2 = tge.get_gizmo_pose_as_SO3_matrix_and_position(1)[1]
+        point2[0][0] = 0;
+        tge.set_position_of_gizmo(1, [0, point2[1][0], point2[2][0]]);
+
+        let vec1 = sub_matrix_matrix(point1, center1);
+        let vec2 = sub_matrix_matrix(point2, center1);
+
+        vec1[0][0] = Math.exp(vec1[0][0]);
+        vec2[1][0] = Math.exp(vec2[1][0]);
+
+        let vec1n = normalized_matrix(vec1);
+        let vec2n = normalized_matrix(vec2);
+
+        engine.draw_debug_vector(center1, add_matrix_matrix(center1, vec1), 0.005, undefined, 0x444444)
+        engine.draw_debug_vector(center1, add_matrix_matrix(center1, vec2), 0.005, undefined, 0x444444)
+        engine.draw_debug_line(add_matrix_matrix(center1, vec1), point1, undefined, 0.001, 0x111111)
+        engine.draw_debug_line(add_matrix_matrix(center1, vec2), point2, undefined, 0.001, 0x111111)
+
+        engine.draw_debug_bivector(vec1n, vec2n, undefined, undefined, undefined, center1);
+
+        let a = unroll_matrix_to_list(vec1n);
+        let b = unroll_matrix_to_list(vec2n);
+
+        settings.v1_x = vec1n[0];
+        settings.v1_y = vec1n[1];
+        settings.v1_z = vec1n[2];
+
+        settings.v2_y = vec2n[1];
+        settings.v2_z = vec2n[2];
+
+        let qw = a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+        let qx = a[1]*b[2] - a[2]*b[1];
+        let qy = -(a[0]*b[2] - a[2]*b[0]);
+        let qz = a[0]*b[1] - a[1]*b[0];
+
+        set_object_orientation_from_wxyz_quaternion(engine, 0, [qw, qx, qy, qz]);
+
+        settings.qw = qw;
+        settings.qx = qx;
+        settings.qy = qy;
+        settings.qz = qz;
+
+        let cc = Math.acos(qw) / Math.sin(Math.acos(qw));
+
+        let axis = [qx, qy, qz];
+        // axis = normalized_matrix(axis);
+
+        engine.draw_debug_vector([0,0,0], axis, 0.02, undefined, 0x00eeee);
+        engine.draw_debug_vector(center1, add_matrix_matrix(center1, axis), 0.02, undefined, 0xeeee00);
+
+        refresh_displays(gui);
+    });
+
+</script>
+</body>
+</html>
