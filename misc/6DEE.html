@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>5D-AA Rotation Representation</title>
+    <title>6DEE Rotation Representation</title>
     <script src="../../js/setup/setup_mathjax.js"></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
@@ -27,19 +27,24 @@
         import {refresh_displays} from "../js/utils/utils_three.js";
         import {set_object_orientation_from_wxyz_quaternion} from "../js/utils/utils_transforms.js";
         import {add_matrix_matrix} from "../js/utils/utils_math.js";
+        import {set_object_orientation_from_SO3_matrix} from "../js/utils/utils_transforms.js";
+        import {mul_matrix_matrix} from "../js/utils/utils_math.js";
 
-        let center1_y = -5;
-        let center2_y = -2.5;
+        let center1_y = -7.5;
+        let center2_y = -5.0;
+        let center3_y = -2.5;
 
         let center1 = [[0], [center1_y], [0]];
         let center2 = [[0], [center2_y], [0]];
+        let center3 = [[0], [center3_y], [0]];
 
         let engine = ThreeEngine.new_default_3d();
 
         let actions = {
             reset: () => {
-                tge.set_position_of_gizmo(0, [0, center1_y, 1]);
+                tge.set_position_of_gizmo(0, [0, center1_y + 1, 0]);
                 tge.set_position_of_gizmo(1, [0, center2_y + 1, 0]);
+                tge.set_position_of_gizmo(2, [0, center3_y + 1, 0]);
                 refresh_displays(gui);
             }
         }
@@ -65,57 +70,92 @@
         // engine.draw_debug_grid_plane(center1, [1, 0, 0], [0, 1, 0], undefined, undefined, undefined, 0.02, undefined, false)
         // engine.draw_debug_grid_plane(center1, [0, 1, 0], [0, 0, 1], undefined, undefined, undefined, 0.02, undefined, false)
 
-        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center1_y, 1], 0.3)
+        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center1_y + 1, 0], 0.3)
         tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center2_y + 1, 0], 0.3)
+        tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center3_y + 1, 0], 0.3)
 
         engine.animation_loop(() => {
             engine.draw_debug_number_line(center1, [1, 0, 0], undefined, undefined, 0xee0000)
             engine.draw_debug_number_line(center1, [0, 1, 0], undefined, undefined, 0x00ee00)
-            engine.draw_debug_number_line(center1, [0, 0, 1], undefined, undefined, 0x0000ee)
 
             engine.draw_debug_number_line(center2, [1, 0, 0], undefined, undefined, 0xee0000)
             engine.draw_debug_number_line(center2, [0, 1, 0], undefined, undefined, 0x00ee00)
 
+            engine.draw_debug_number_line(center3, [1, 0, 0], undefined, undefined, 0xee0000)
+            engine.draw_debug_number_line(center3, [0, 1, 0], undefined, undefined, 0x00ee00)
+
             let point1 = tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1]
+            point1[2][0] = 0;
             let point2 = tge.get_gizmo_pose_as_SO3_matrix_and_position(1)[1]
+            point2[2][0] = 0;
+            let point3 = tge.get_gizmo_pose_as_SO3_matrix_and_position(2)[1]
             point2[2][0] = 0;
 
             let v1 = sub_matrix_matrix(point1, center1);
-            // v1[0][0] = Math.exp(v1[0][0]);
-            // v1[1][0] = Math.exp(v1[1][0]);
-            v1[2][0] = Math.exp(v1[2][0]);
             let v1n = normalized_matrix(v1);
 
             let v2 = sub_matrix_matrix(point2, center2);
             let v2n = normalized_matrix(v2);
 
-            engine.draw_debug_vector(center1, add_matrix_matrix(center1, v1), 0.005, undefined, 0x222222)
-            engine.draw_debug_vector(center2, add_matrix_matrix(center2, v2), 0.005, undefined, 0x222222)
-            engine.draw_debug_line(add_matrix_matrix(center1, v1), point1, undefined, 0.001, 0x111111)
+            let v3 = sub_matrix_matrix(point3, center3);
+            let v3n = normalized_matrix(v3);
+
+            engine.draw_debug_vector(center1, point1, 0.005, undefined, 0x222222)
+            engine.draw_debug_vector(center2, point2, 0.005, undefined, 0x222222)
+            engine.draw_debug_vector(center3, point3, 0.005, undefined, 0x222222)
 
             engine.draw_debug_vector(center1, add_matrix_matrix(center1, v1n), 0.02, undefined, 0xeeee00)
             engine.draw_debug_vector(center2, add_matrix_matrix(center2, v2n), 0.02, undefined, 0xeeee00)
+            engine.draw_debug_vector(center3, add_matrix_matrix(center3, v3n), 0.02, undefined, 0xeeee00)
 
             // let vec1 = sub_matrix_matrix(point1, center1);
-            let rot_axis = mul_matrix_scalar(normalized_matrix(v1), 1.0);
-            engine.draw_debug_vector([0,0,0], rot_axis, 0.02, undefined, 0x00eeee);
-            settings.rot_axis_x = rot_axis[0][0];
-            settings.rot_axis_y = rot_axis[1][0];
-            settings.rot_axis_z = rot_axis[2][0];
+            // let rot_axis = mul_matrix_scalar(normalized_matrix(vec1), 1.0);
+            // engine.draw_debug_vector([0,0,0], rot_axis, 0.02, undefined, 0x00eeee);
+            // settings.rot_axis_x = rot_axis[0][0];
+            // settings.rot_axis_y = rot_axis[1][0];
+            // settings.rot_axis_z = rot_axis[2][0];
 
-            let vec2 = sub_matrix_matrix(point2, center2);
-            let x = vec2[1][0];
-            let y = -vec2[0][0];
-            let atan2 = Math.atan2(y, x);
-            settings.angle = atan2;
+            // let vec2 = sub_matrix_matrix(point2, center2);
+            // let x = vec2[1][0];
+            // let y = -vec2[0][0];
+            // let atan2 = Math.atan2(y, x);
+            // settings.angle = atan2;
+            tge.set_position_of_gizmo(0, [point1[0][0], point1[1][0], 0]);
             tge.set_position_of_gizmo(1, [point2[0][0], point2[1][0], 0]);
+            tge.set_position_of_gizmo(2, [point3[0][0], point3[1][0], 0]);
 
-            let qw = Math.cos(atan2 / 2.0);
-            let qx = rot_axis[0][0]*Math.sin(atan2 / 2.0);
-            let qy = rot_axis[1][0]*Math.sin(atan2 / 2.0);
-            let qz = rot_axis[2][0]*Math.sin(atan2 / 2.0);
+            let a1 = Math.atan2(-v1[0][0], v1[1][0])
+            let a2 = Math.atan2(-v2[0][0], v2[1][0])
+            let a3 = Math.atan2(-v3[0][0], v3[1][0])
 
-            set_object_orientation_from_wxyz_quaternion(engine, 0, [qw, qx, qy, qz]);
+            let R1 = [
+                [Math.cos(a1), -Math.sin(a1), 0],
+                [Math.sin(a1), Math.cos(a1), 0],
+                [0, 0, 1]
+            ];
+
+            let R2 = [
+                [Math.cos(a2), 0, Math.sin(a2)],
+                [0, 1, 0],
+                [-Math.sin(a2), 0, Math.cos(a2)]
+            ];
+
+            let R3 = [
+                [Math.cos(a3), -Math.sin(a3), 0],
+                [Math.sin(a3), Math.cos(a3), 0],
+                [0, 0, 1]
+            ];
+
+            let R = mul_matrix_matrix(R1, mul_matrix_matrix(R2, R3))
+
+            // let qw = Math.cos(atan2 / 2.0);
+            // let qx = rot_axis[0][0]*Math.sin(atan2 / 2.0);
+            // let qy = rot_axis[1][0]*Math.sin(atan2 / 2.0);
+            // let qz = rot_axis[2][0]*Math.sin(atan2 / 2.0);
+
+            // set_object_orientation_from_wxyz_quaternion(engine, 0, [qw, qx, qy, qz]);
+
+            set_object_orientation_from_SO3_matrix(engine, 0, R);
 
             refresh_displays(gui);
         });
