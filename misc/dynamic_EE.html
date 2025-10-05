@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>6DEE Rotation Representation</title>
+    <script src="../../js/setup/setup_mathjax.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <script type="module">
+        import {ThreeEngine} from '../js/utils/utils_three.js'
+        import {TransformGizmoEngine} from "../js/utils/utils_transform_gizmo.js";
+        import {sub_matrix_matrix} from "../js/utils/utils_math.js";
+        import {normalized_matrix} from "../js/utils/utils_math.js";
+        import {mul_matrix_scalar} from "../js/utils/utils_math.js";
+        import {get_default_lil_gui} from "../js/utils/utils_three.js";
+        import {refresh_displays} from "../js/utils/utils_three.js";
+        import {set_object_orientation_from_wxyz_quaternion} from "../js/utils/utils_transforms.js";
+        import {add_matrix_matrix} from "../js/utils/utils_math.js";
+        import {set_object_orientation_from_SO3_matrix} from "../js/utils/utils_transforms.js";
+        import {mul_matrix_matrix} from "../js/utils/utils_math.js";
+        import {get_x_rotation_so3_matrix} from "../js/utils/utils_euler_angles.js";
+        import {vec3_to_so3_mat} from "../js/utils/utils_exp_and_log.js";
+        import {exp_so3_to_SO3} from "../js/utils/utils_exp_and_log.js";
+
+        let center1_y = -7.5;
+        let center2_y = -5.0;
+        let center3_y = -2.5;
+
+        let center1 = [[0], [center1_y], [0]];
+        let center2 = [[0], [center2_y], [0]];
+        let center3 = [[0], [center3_y], [0]];
+
+        let engine = ThreeEngine.new_default_3d();
+
+        let actions = {
+            reset: () => {
+                settings.rx = 0;
+                settings.ry = 0;
+                settings.rz = 0;
+                refresh_displays(gui);
+            }
+        }
+        let settings = {
+            'rx': 0,
+            'ry': 0,
+            'rz': 0,
+        };
+        let gui = get_default_lil_gui();
+        gui.add(settings, 'rx', -Math.PI, Math.PI)
+        gui.add(settings, 'ry', -Math.PI, Math.PI)
+        gui.add(settings, 'rz', -Math.PI, Math.PI)
+        gui.add(actions, 'reset')
+
+        let tge = new TransformGizmoEngine(engine);
+
+        engine.add_suzanne_monkey_as_mesh_object(0x00eeee);
+        engine.toggle_mesh_object_wireframe_visibility(0);
+        engine.set_mesh_object_visibility(0, false);
+
+        engine.animation_loop(() => {
+            let R1 = get_x_rotation_so3_matrix(settings.rx);
+            let axis2 = mul_matrix_matrix(R1, [[0], [1], [0]]);
+            let axis3 = mul_matrix_matrix(R1, [[0], [0], [1]]);
+
+            let so3_matrix_2 = mul_matrix_scalar(vec3_to_so3_mat(axis2), settings.ry);
+            let so3_matrix_3 = mul_matrix_scalar(vec3_to_so3_mat(axis3), settings.rz);
+
+            let R2 = exp_so3_to_SO3(so3_matrix_2);
+            let R3 = exp_so3_to_SO3(so3_matrix_3);
+
+            let R = mul_matrix_matrix(R1, mul_matrix_matrix(R2, R3));
+
+            set_object_orientation_from_SO3_matrix(engine, 0, R);
+        });
+
+    </script>
+</body>
+</html>
