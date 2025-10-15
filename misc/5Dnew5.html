@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="../../js/setup/setup_mathjax.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+<script type="module">
+    import {ThreeEngine} from '../js/utils/utils_three.js'
+    import {TransformGizmoEngine} from "../js/utils/utils_transform_gizmo.js";
+    import {sub_matrix_matrix} from "../js/utils/utils_math.js";
+    import {normalized_matrix} from "../js/utils/utils_math.js";
+    import {mul_matrix_scalar} from "../js/utils/utils_math.js";
+    import {get_default_lil_gui} from "../js/utils/utils_three.js";
+    import {refresh_displays} from "../js/utils/utils_three.js";
+    import {set_object_orientation_from_SO3_matrix} from "../js/utils/utils_transforms.js";
+    import {add_matrix_matrix} from "../js/utils/utils_math.js";
+    import {mul_matrix_matrix} from "../js/utils/utils_math.js";
+    import {identity_matrix} from "../js/utils/utils_math.js";
+    import {transpose} from "../js/utils/utils_math.js";
+
+    let center1_y = -5;
+    let center2_y = -2.5;
+
+    let center1 = [[0], [center1_y], [0]];
+    let center2 = [[0], [center2_y], [0]];
+
+    let engine = ThreeEngine.new_default_3d();
+
+    let actions = {
+        reset: () => {
+            tge.set_position_of_gizmo(0, [1, center1_y, 0]);
+            tge.set_position_of_gizmo(1, [0, center2_y + 1, 0]);
+            refresh_displays(gui);
+        }
+    }
+    let settings = {
+        'rot_axis_x': 0,
+        'rot_axis_y': 0,
+        'rot_axis_z': 0,
+        'angle': 0,
+    };
+    let gui = get_default_lil_gui();
+    gui.add(settings, 'rot_axis_x').disable()
+    gui.add(settings, 'rot_axis_y').disable()
+    gui.add(settings, 'rot_axis_z').disable()
+    gui.add(settings, 'angle').disable()
+    gui.add(actions, 'reset')
+
+    let tge = new TransformGizmoEngine(engine);
+
+    engine.add_suzanne_monkey_as_mesh_object(0x00eeee);
+    engine.toggle_mesh_object_wireframe_visibility(0);
+    engine.set_mesh_object_visibility(0, false);
+
+    tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1, center1_y, 0], 0.3)
+    tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center2_y + 1, 0], 0.3)
+
+    // ----------------------------
+    // Small vector helpers for 3x1 nested arrays
+    function vdot(a,b){ return a[0][0]*b[0][0] + a[1][0]*b[1][0] + a[2][0]*b[2][0]; }
+    function vlen(a){ return Math.sqrt(vdot(a,a)); }
+    function vsub(a,b){ return [[a[0][0]-b[0][0]],[a[1][0]-b[1][0]],[a[2][0]-b[2][0]]]; }
+    function vscale(a,s){ return [[a[0][0]*s],[a[1][0]*s],[a[2][0]*s]]; }
+    function vnormalize(a){
+        const n = vlen(a);
+        if(n < 1e-30) return [[0],[0],[0]];
+        return vscale(a, 1.0/n);
+    }
+    function vcross(a,b){
+        return [[a[1][0]*b[2][0]-a[2][0]*b[1][0]],
+            [a[2][0]*b[0][0]-a[0][0]*b[2][0]],
+            [a[0][0]*b[1][0]-a[1][0]*b[0][0]]];
+    }
+
+    // ----------------------------
+    // Rodrigues: minimal rotation e1 -> x, with robust 180° fallback (smooth axis rule)
+    function rodrigues_e1_to_x(x){
+        const e1 = [[1],[0],[0]];
+        const c  = x[0][0];         // dot(e1, x) ∈ [-1,1]
+        const v  = vcross(e1, x);   // axis numerator
+        const s  = vlen(v);
+
+        if (s < 1e-12) {
+            // x ~ ±e1
+            if (c > 0) return identity_matrix(3);  // near +e1 -> I
+
+            // near -e1: 180° about a smooth, deterministic axis ⟂ x
+            // prefer global z unless parallel, otherwise use global y
+            const z = [[0],[0],[1]], y = [[0],[1],[0]];
+            let u = vcross(z, x);
+            if (vlen(u) < 1e-8) u = vcross(y, x);
+            u = vnormalize(u);
+            // R = -I + 2 u u^T
+            const uuT = [
+                [u[0][0]*u[0][0], u[0][0]*u[1][0], u[0][0]*u[2][0]],
+                [u[1][0]*u[0][0], u[1][0]*u[1][0], u[1][0]*u[2][0]],
+                [u[2][0]*u[0][0], u[2][0]*u[1][0], u[2][0]*u[2][0]],
+            ];
+            const I = identity_matrix(3);
+            return [
+                [-I[0][0] + 2*uuT[0][0],         2*uuT[0][1],         2*uuT[0][2]],
+                [        2*uuT[1][0], -I[1][1] + 2*uuT[1][1],         2*uuT[1][2]],
+                [        2*uuT[2][0],         2*uuT[2][1], -I[2][2] + 2*uuT[2][2]],
+            ];
+        }
+
+        // Standard Rodrigues: R = I + [v]_x + [v]_x^2 * ((1-c)/s^2)
+        const vx = [
+            [ 0,         -v[2][0],  v[1][0]],
+            [ v[2][0],    0,        -v[0][0]],
+            [-v[1][0],   v[0][0],   0      ],
+        ];
+        const vxvx = mul_matrix_matrix(vx, vx);
+        const k = (1.0 - c) / (s*s);
+        const I = identity_matrix(3);
+
+        // I + vx
+        const Ivx = [
+            [I[0][0] + vx[0][0], I[0][1] + vx[0][1], I[0][2] + vx[0][2]],
+            [I[1][0] + vx[1][0], I[1][1] + vx[1][1], I[1][2] + vx[1][2]],
+            [I[2][0] + vx[2][0], I[2][1] + vx[2][1], I[2][2] + vx[2][2]],
+        ];
+        // k * vxvx
+        const k_vxvx = [
+            [k*vxvx[0][0], k*vxvx[0][1], k*vxvx[0][2]],
+            [k*vxvx[1][0], k*vxvx[1][1], k*vxvx[1][2]],
+            [k*vxvx[2][0], k*vxvx[2][1], k*vxvx[2][2]],
+        ];
+        // sum
+        return [
+            [Ivx[0][0] + k_vxvx[0][0], Ivx[0][1] + k_vxvx[0][1], Ivx[0][2] + k_vxvx[0][2]],
+            [Ivx[1][0] + k_vxvx[1][0], Ivx[1][1] + k_vxvx[1][1], Ivx[1][2] + k_vxvx[1][2]],
+            [Ivx[2][0] + k_vxvx[2][0], Ivx[2][1] + k_vxvx[2][1], Ivx[2][2] + k_vxvx[2][2]],
+        ];
+    }
+
+    engine.animation_loop(() => {
+        // axes
+        engine.draw_debug_number_line(center1, [1, 0, 0], undefined, undefined, 0xee0000)
+        engine.draw_debug_number_line(center1, [0, 1, 0], undefined, undefined, 0x00ee00)
+        engine.draw_debug_number_line(center1, [0, 0, 1], undefined, undefined, 0x0000ee)
+
+        engine.draw_debug_number_line(center2, [1, 0, 0], undefined, undefined, 0xee0000)
+        engine.draw_debug_number_line(center2, [0, 1, 0], undefined, undefined, 0x00ee00)
+
+        let point1 = tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1]
+        let point2 = tge.get_gizmo_pose_as_SO3_matrix_and_position(1)[1]
+        point2[2][0] = 0; // keep in plane for angle control
+
+        let v1 = sub_matrix_matrix(point1, center1);
+        let x  = normalized_matrix(v1);   // unit target direction
+
+        let v2 = sub_matrix_matrix(point2, center2);
+        let v2n = normalized_matrix(v2);
+
+        engine.draw_debug_vector(center1, point1, 0.005, undefined, 0x222222)
+        engine.draw_debug_vector(center2, point2, 0.005, undefined, 0x222222)
+
+        engine.draw_debug_vector(center1, add_matrix_matrix(center1, x), 0.02, undefined, 0xeeee00)
+        engine.draw_debug_vector(center2, add_matrix_matrix(center2, v2n), 0.02, undefined, 0xeeee00)
+
+        // Local roll about x from second gizmo
+        let vec2 = sub_matrix_matrix(point2, center2);
+        let theta = Math.atan2(vec2[1][0], vec2[0][0]);
+        settings.angle = theta;
+        tge.set_position_of_gizmo(1, [point2[0][0], point2[1][0], 0]);
+
+        // Align e1 -> x using Rodrigues (robust at antipode)
+        let R_align = rodrigues_e1_to_x(x);
+
+        // Roll about local x: R = R_align * Rx(theta)
+        let Rx = [
+            [1.0, 0.0, 0.0],
+            [0.0, Math.cos(theta), -Math.sin(theta)],
+            [0.0, Math.sin(theta),  Math.cos(theta)]
+        ];
+        let R = mul_matrix_matrix(R_align, Rx);
+
+        // debug display
+        settings.rot_axis_x = x[0][0];
+        settings.rot_axis_y = x[1][0];
+        settings.rot_axis_z = x[2][0];
+
+        set_object_orientation_from_SO3_matrix(engine, 0, R);
+        refresh_displays(gui);
+    });
+
+</script>
+</body>
+</html>

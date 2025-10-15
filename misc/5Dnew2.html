@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>5D-AA Rotation Representation</title>
+    <title></title>
     <script src="../../js/setup/setup_mathjax.js"></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
@@ -31,6 +31,8 @@
         import {cross_product} from "../js/utils/utils_math.js";
         import {exp_so3_to_SO3, vec3_to_so3_mat} from "../js/utils/utils_exp_and_log.js";
         import {set_object_orientation_from_SO3_matrix} from "../js/utils/utils_transforms.js";
+        import {identity_matrix} from "../js/utils/utils_math.js";
+        import {transpose} from "../js/utils/utils_math.js";
 
         let center1_y = -5;
         let center2_y = -2.5;
@@ -94,49 +96,48 @@
             engine.draw_debug_vector(center2, add_matrix_matrix(center2, v2n), 0.02, undefined, 0xeeee00)
 
             let vec1 = sub_matrix_matrix(point1, center1);
-            let rot_axis = mul_matrix_scalar(normalized_matrix(vec1), 1.0);
+            let x = normalized_matrix(vec1);
             // engine.draw_debug_vector([0,0,0], rot_axis, 0.02, undefined, 0x00eeee);
-            settings.rot_axis_x = rot_axis[0][0];
-            settings.rot_axis_y = rot_axis[1][0];
-            settings.rot_axis_z = rot_axis[2][0];
+            // settings.rot_axis_x = rot_axis[0][0];
+            // settings.rot_axis_y = rot_axis[1][0];
+            // settings.rot_axis_z = rot_axis[2][0];
 
             let vec2 = sub_matrix_matrix(point2, center2);
-            let x = vec2[1][0];
-            let y = -vec2[0][0];
-            let atan2 = Math.atan2(y, x);
-            settings.angle = atan2;
+            // let x = vec2[1][0];
+            // let y = -vec2[0][0];
+            let theta = Math.atan2(vec2[1][0], vec2[0][0]);
+            settings.angle = theta;
             tge.set_position_of_gizmo(1, [point2[0][0], point2[1][0], 0]);
 
-            // let qw = Math.cos(atan2 / 2.0);
-            // let qx = rot_axis[0][0]*Math.sin(atan2 / 2.0);
-            // let qy = rot_axis[1][0]*Math.sin(atan2 / 2.0);
-            // let qz = rot_axis[2][0]*Math.sin(atan2 / 2.0);
-
-            // set_object_orientation_from_wxyz_quaternion(engine, 0, [qw, qx, qy, qz]);
-
-            let A = [[0.3, 0.2, 0.1], [-0.3, 0.11, 0.4], [0.1, 0.2, 0.3]];
-            let b = [[0.001], [0.0002], [-0.0003]];
-
-            let xx = rot_axis;
-            let rx = normalized_matrix(add_matrix_matrix(mul_matrix_matrix(A, rot_axis), b));
-            let yys = normalized_matrix(cross_product(xx, rx));
-            let ra = mul_matrix_scalar(xx, atan2);
-            let so3_mat = vec3_to_so3_mat(ra);
-            let SO3_mat = exp_so3_to_SO3(so3_mat);
-            let yy = mul_matrix_matrix(SO3_mat, yys);
-            let zz = cross_product(xx, yy);
-            let r = [
-                [ xx[0][0], yy[0][0], zz[0][0] ],
-                [ xx[1][0], yy[1][0], zz[1][0] ],
-                [ xx[2][0], yy[2][0], zz[2][0] ]
+            let R1 = [
+                [1.0, 0.0, 0.0],
+                [0.0, Math.cos(theta), -Math.sin(theta)],
+                [0.0, Math.sin(theta), Math.cos(theta)]
             ];
-            set_object_orientation_from_SO3_matrix(engine, 0, r);
 
-            engine.draw_debug_line([0,0,0], xx, undefined, 0.03, 0xff0000);
-            engine.draw_debug_line([0,0,0], yy, undefined, 0.03, 0x00ff00);
-            engine.draw_debug_line([0,0,0], zz, undefined, 0.03, 0x0000ff);
+            let yp = mul_matrix_matrix(R1, [[0], [1], [0]]);
+            let zp = mul_matrix_matrix(R1, [[0], [0], [1]]);
 
-            engine.draw_debug_vector(center1, add_matrix_matrix(center1, normalized_matrix(rx)), 0.01, undefined, 0x333333)
+            let u = sub_matrix_matrix([[1], [0], [0]], x);
+            let R2;
+            if(u[0][0] === 0.0 && u[1][0] === 0.0 && u[2][0] === 0.0) {
+                R2 = identity_matrix(3);
+            } else {
+                u = normalized_matrix(u);
+                let A = mul_matrix_scalar(mul_matrix_matrix(u, transpose(u)), 2.0);
+                R2 = sub_matrix_matrix(identity_matrix(3), A);
+            }
+
+            let y = mul_matrix_matrix(R2, yp);
+            let z = mul_matrix_matrix(R2, zp);
+
+            let R = [
+                [x[0][0], y[0][0], -z[0][0]],
+                [x[1][0], y[1][0], -z[1][0]],
+                [x[2][0], y[2][0], -z[2][0]]
+            ];
+
+            set_object_orientation_from_SO3_matrix(engine, 0, R);
 
             refresh_displays(gui);
         });

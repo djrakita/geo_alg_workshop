@@ -979,3 +979,205 @@ export function zeros_matrix(m, n) {
     }
     return out;
 }
+
+/**
+ * Computes the Singular Value Decomposition (SVD) of a matrix A.
+ * Returns U, S, and V such that A = U * S * V^T, where S is a diagonal matrix.
+ * @param {Array<Array<number>>} A - The input matrix (m x n).
+ * @param {number} [maxIterations=100] - Maximum number of iterations for convergence.
+ * @param {number} [tolerance=1e-10] - Convergence tolerance.
+ * @returns {Object} An object containing:
+ *   - U: Left singular vectors (m x m orthogonal matrix)
+ *   - S: Diagonal matrix of singular values (m x n)
+ *   - V: Right singular vectors (n x n orthogonal matrix)
+ */
+export function svd(A, maxIterations = 100, tolerance = 1e-10) {
+    const m = A.length;
+    const n = A[0].length;
+
+    // Compute A^T * A for right singular vectors
+    const AT = transpose(A);
+    const ATA = mul_matrix_matrix(AT, A);
+
+    // Compute A * A^T for left singular vectors
+    const AAT = mul_matrix_matrix(A, AT);
+
+    // Find eigenvalues and eigenvectors using power iteration
+    const { eigenvalues: singularValues, eigenvectors: V } = powerIterationMultiple(ATA, Math.min(m, n), maxIterations, tolerance);
+
+    // Sort singular values in descending order
+    const indices = singularValues.map((val, idx) => ({ val: Math.sqrt(Math.max(0, val)), idx }))
+        .sort((a, b) => b.val - a.val);
+
+    // Create sorted V matrix
+    const V_sorted = zeros_matrix(n, n);
+    const sigma = [];
+    for (let i = 0; i < indices.length; i++) {
+        const col = V[indices[i].idx];
+        for (let j = 0; j < n; j++) {
+            V_sorted[j][i] = col[j][0];
+        }
+        sigma.push(indices[i].val);
+    }
+
+    // Compute U = A * V * Sigma^(-1)
+    const U = zeros_matrix(m, m);
+    for (let i = 0; i < Math.min(m, n); i++) {
+        if (sigma[i] > tolerance) {
+            // Get i-th column of V
+            const v_col = [];
+            for (let j = 0; j < n; j++) {
+                v_col.push([V_sorted[j][i]]);
+            }
+
+            // Compute A * v_col
+            const Av = mul_matrix_matrix(A, v_col);
+
+            // Divide by singular value to get u_col
+            for (let j = 0; j < m; j++) {
+                U[j][i] = Av[j][0] / sigma[i];
+            }
+        }
+    }
+
+    // Fill remaining columns of U with orthonormal vectors
+    for (let i = Math.min(m, n); i < m; i++) {
+        // Create a random vector
+        const v = zeros_matrix(m, 1);
+        for (let j = 0; j < m; j++) {
+            v[j][0] = Math.random() - 0.5;
+        }
+
+        // Orthogonalize against existing columns
+        for (let k = 0; k < i; k++) {
+            const u_k = [];
+            for (let j = 0; j < m; j++) {
+                u_k.push([U[j][k]]);
+            }
+            const proj_scalar = dot_product(v, u_k);
+            for (let j = 0; j < m; j++) {
+                v[j][0] -= proj_scalar * U[j][k];
+            }
+        }
+
+        // Normalize
+        const norm = frobenius_norm_matrix(v);
+        if (norm > tolerance) {
+            for (let j = 0; j < m; j++) {
+                U[j][i] = v[j][0] / norm;
+            }
+        }
+    }
+
+    // Create diagonal matrix S (m x n)
+    const S = zeros_matrix(m, n);
+    for (let i = 0; i < Math.min(m, n); i++) {
+        S[i][i] = sigma[i];
+    }
+
+    return { U, S, V: V_sorted };
+}
+
+/**
+ * Finds multiple eigenvalues and eigenvectors using power iteration.
+ * @param {Array<Array<number>>} A - The input symmetric matrix.
+ * @param {number} k - Number of eigenvalues/eigenvectors to find.
+ * @param {number} maxIterations - Maximum iterations per eigenvector.
+ * @param {number} tolerance - Convergence tolerance.
+ * @returns {Object} An object with eigenvalues array and eigenvectors array.
+ */
+function powerIterationMultiple(A, k, maxIterations, tolerance) {
+    const n = A.length;
+    const eigenvalues = [];
+    const eigenvectors = [];
+
+    for (let idx = 0; idx < k; idx++) {
+        // Initialize random vector
+        let v = zeros_matrix(n, 1);
+        for (let i = 0; i < n; i++) {
+            v[i][0] = Math.random() - 0.5;
+        }
+
+        // Orthogonalize against previous eigenvectors
+        for (let j = 0; j < idx; j++) {
+            const prev = eigenvectors[j];
+            const proj_scalar = dot_product(v, prev);
+            for (let i = 0; i < n; i++) {
+                v[i][0] -= proj_scalar * prev[i][0];
+            }
+        }
+
+        // Normalize
+        let norm = frobenius_norm_matrix(v);
+        for (let i = 0; i < n; i++) {
+            v[i][0] /= norm;
+        }
+
+        // Power iteration
+        let eigenvalue = 0;
+        for (let iter = 0; iter < maxIterations; iter++) {
+            const Av = mul_matrix_matrix(A, v);
+
+            // Orthogonalize against previous eigenvectors
+            for (let j = 0; j < idx; j++) {
+                const prev = eigenvectors[j];
+                const proj_scalar = dot_product(Av, prev);
+                for (let i = 0; i < n; i++) {
+                    Av[i][0] -= proj_scalar * prev[i][0];
+                }
+            }
+
+            const newEigenvalue = dot_product(v, Av);
+            norm = frobenius_norm_matrix(Av);
+
+            if (norm < tolerance) break;
+
+            for (let i = 0; i < n; i++) {
+                v[i][0] = Av[i][0] / norm;
+            }
+
+            if (Math.abs(newEigenvalue - eigenvalue) < tolerance) break;
+            eigenvalue = newEigenvalue;
+        }
+
+        eigenvalues.push(eigenvalue);
+        eigenvectors.push(v);
+    }
+
+    return { eigenvalues, eigenvectors };
+}
+
+/**
+ * Ensures an orthonormal matrix has determinant +1 by flipping the sign of the last column if determinant is -1.
+ * @param {Array<Array<number>>} matrix - The input orthonormal matrix (must be square).
+ * @returns {Array<Array<number>>} The matrix with determinant +1.
+ * @throws {Error} If the matrix is not square or determinant is not ±1.
+ */
+export function ensure_positive_determinant(matrix) {
+    const n = matrix.length;
+
+    // Check if matrix is square
+    if (matrix[0].length !== n) {
+        throw new Error("Matrix must be square");
+    }
+
+    const det = determinant(matrix);
+
+    // Check if determinant is approximately ±1
+    if (Math.abs(Math.abs(det) - 1) > 0.001) {
+        throw new Error(`Matrix determinant must be ±1, got ${det}`);
+    }
+
+    // If determinant is already positive, return as is
+    if (det > 0) {
+        return matrix.map(row => [...row]);
+    }
+
+    // If determinant is negative, flip the sign of the last column
+    const result = matrix.map(row => [...row]);
+    for (let i = 0; i < n; i++) {
+        result[i][n - 1] = -result[i][n - 1];
+    }
+
+    return result;
+}
