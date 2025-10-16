@@ -1164,9 +1164,9 @@ export function ensure_positive_determinant(matrix) {
     const det = determinant(matrix);
 
     // Check if determinant is approximately ±1
-    if (Math.abs(Math.abs(det) - 1) > 0.001) {
-        throw new Error(`Matrix determinant must be ±1, got ${det}`);
-    }
+    // if (Math.abs(Math.abs(det) - 1) > 0.001) {
+        // throw new Error(`Matrix determinant must be ±1, got ${det}`);
+    // }
 
     // If determinant is already positive, return as is
     if (det > 0) {
@@ -1177,6 +1177,136 @@ export function ensure_positive_determinant(matrix) {
     const result = matrix.map(row => [...row]);
     for (let i = 0; i < n; i++) {
         result[i][n - 1] = -result[i][n - 1];
+    }
+
+    return result;
+}
+
+/**
+ * Computes the absolute value of each element in a matrix.
+ * @param {Array<Array<number>>} m - The input matrix.
+ * @returns {Array<Array<number>>} The resulting matrix with absolute values.
+ */
+export function abs_matrix(m) {
+    m = roll_list_into_column_vec_matrix(m);
+
+    let result = new Array(m.length);
+    for (let i = 0; i < m.length; i++) {
+        result[i] = new Array(m[i].length);
+        for (let j = 0; j < m[i].length; j++) {
+            result[i][j] = Math.abs(m[i][j]);
+        }
+    }
+    return result;
+}
+
+/**
+ * Computes the softmin of a matrix, treating all elements as a flat array.
+ * Softmin is computed as exp(-kappa * x_i) / sum(exp(-kappa * x_j)) for each element.
+ * @param {Array<Array<number>>} m - The input matrix.
+ * @param {number} [kappa=1.0] - Sharpness parameter (higher = sharper, more focused on minimum).
+ * @returns {Array<Array<number>>} The resulting matrix with softmin values.
+ */
+export function softmin_matrix(m, kappa = 1.0) {
+    m = roll_list_into_column_vec_matrix(m);
+
+    // Flatten matrix to compute softmin
+    let flat = [];
+    for (let i = 0; i < m.length; i++) {
+        for (let j = 0; j < m[i].length; j++) {
+            flat.push(m[i][j]);
+        }
+    }
+
+    // Find max for numerical stability
+    let max_val = Math.max(...flat);
+
+    // Compute exp(-kappa * x_i) with numerical stability
+    let exp_vals = flat.map(x => Math.exp(-kappa * (x - max_val)));
+    let sum_exp = exp_vals.reduce((a, b) => a + b, 0);
+
+    // Create result matrix with softmin values
+    let result = new Array(m.length);
+    let idx = 0;
+    for (let i = 0; i < m.length; i++) {
+        result[i] = new Array(m[i].length);
+        for (let j = 0; j < m[i].length; j++) {
+            result[i][j] = exp_vals[idx] / sum_exp;
+            idx++;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Computes the softmax of a matrix, treating all elements as a flat array.
+ * Softmax is computed as exp(kappa * x_i) / sum(exp(kappa * x_j)) for each element.
+ * @param {Array<Array<number>>} m - The input matrix.
+ * @param {number} [kappa=1.0] - Sharpness parameter (higher = sharper, more focused on maximum).
+ * @returns {Array<Array<number>>} The resulting matrix with softmax values.
+ */
+export function softmax_matrix(m, kappa = 1.0) {
+    m = roll_list_into_column_vec_matrix(m);
+
+    // Flatten matrix to compute softmax
+    let flat = [];
+    for (let i = 0; i < m.length; i++) {
+        for (let j = 0; j < m[i].length; j++) {
+            flat.push(m[i][j]);
+        }
+    }
+
+    // Find max for numerical stability
+    let max_val = Math.max(...flat);
+
+    // Compute exp(kappa * x_i) with numerical stability
+    let exp_vals = flat.map(x => Math.exp(kappa * (x - max_val)));
+    let sum_exp = exp_vals.reduce((a, b) => a + b, 0);
+
+    // Create result matrix with softmax values
+    let result = new Array(m.length);
+    let idx = 0;
+    for (let i = 0; i < m.length; i++) {
+        result[i] = new Array(m[i].length);
+        for (let j = 0; j < m[i].length; j++) {
+            result[i][j] = exp_vals[idx] / sum_exp;
+            idx++;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Creates a matrix where each row is a unit 3-vector approximately equally spaced on the sphere S^2.
+ * Uses the Fibonacci sphere algorithm for near-uniform distribution.
+ * @param {number} num_rows - The number of unit vectors (rows) to generate.
+ * @returns {Array<Array<number>>} An (num_rows x 3) matrix where each row is a unit vector on S^2.
+ */
+export function fibonacci_sphere_matrix(num_rows) {
+    if (num_rows < 1) {
+        throw new Error("num_rows must be at least 1");
+    }
+
+    let result = new Array(num_rows);
+    const golden_ratio = (1 + Math.sqrt(5)) / 2;
+    const golden_angle = 2 * Math.PI / golden_ratio;
+
+    for (let i = 0; i < num_rows; i++) {
+        // Latitude: map i uniformly from -1 to 1
+        const z = 1 - (2 * i) / (num_rows - 1);
+
+        // Radius at this latitude
+        const radius = Math.sqrt(1 - z * z);
+
+        // Longitude: golden angle spiral
+        const theta = golden_angle * i;
+
+        const x = radius * Math.cos(theta);
+        const y = radius * Math.sin(theta);
+
+        result[i] = [x, y, z];
     }
 
     return result;

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="../../js/setup/setup_mathjax.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+<script type="module">
+    import {ThreeEngine} from '../js/utils/utils_three.js'
+    import {TransformGizmoEngine} from "../js/utils/utils_transform_gizmo.js";
+    import {sub_matrix_matrix} from "../js/utils/utils_math.js";
+    import {normalized_matrix} from "../js/utils/utils_math.js";
+    import {mul_matrix_scalar} from "../js/utils/utils_math.js";
+    import {get_default_lil_gui} from "../js/utils/utils_three.js";
+    import {refresh_displays} from "../js/utils/utils_three.js";
+    import {set_object_orientation_from_SO3_matrix} from "../js/utils/utils_transforms.js";
+    import {add_matrix_matrix} from "../js/utils/utils_math.js";
+    import {mul_matrix_matrix} from "../js/utils/utils_math.js";
+    import {identity_matrix} from "../js/utils/utils_math.js";
+    import {transpose} from "../js/utils/utils_math.js";
+    import {abs_matrix} from "../js/utils/utils_math.js";
+    import {softmin_matrix} from "../js/utils/utils_math.js";
+    import {vec3_to_so3_mat} from "../js/utils/utils_exp_and_log.js";
+    import {cross_product} from "../js/utils/utils_math.js";
+    import {unroll_matrix_to_list} from "../js/utils/utils_math.js";
+    import {dot_product} from "../js/utils/utils_math.js";
+    import {fibonacci_sphere_matrix} from "../js/utils/utils_math.js";
+    import {get_columns} from "../js/utils/utils_math.js";
+
+    let center1_y = -5;
+    let center2_y = -2.5;
+
+    let center1 = [[0], [center1_y], [0]];
+    let center2 = [[0], [center2_y], [0]];
+
+    let engine = ThreeEngine.new_default_3d();
+
+    let actions = {
+        reset: () => {
+            tge.set_position_of_gizmo(0, [1, center1_y, 0]);
+            tge.set_position_of_gizmo(1, [0, center2_y + 1, 0]);
+            refresh_displays(gui);
+        }
+    }
+    let settings = {
+        'kappa': 0.1,
+    };
+    let gui = get_default_lil_gui();
+    gui.add(settings, 'kappa', 0.01, 10.0);
+    gui.add(actions, 'reset')
+
+    let tge = new TransformGizmoEngine(engine);
+
+    engine.add_suzanne_monkey_as_mesh_object(0x00eeee);
+    engine.toggle_mesh_object_wireframe_visibility(0);
+    engine.set_mesh_object_visibility(0, false);
+
+    tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1, center1_y, 0], 0.3)
+    tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center2_y + 1, 0], 0.3)
+
+    engine.animation_loop(() => {
+        // axes at centers
+        engine.draw_debug_number_line(center1, [1, 0, 0], undefined, undefined, 0xee0000)
+        engine.draw_debug_number_line(center1, [0, 1, 0], undefined, undefined, 0x00ee00)
+        engine.draw_debug_number_line(center1, [0, 0, 1], undefined, undefined, 0x0000ee)
+
+        engine.draw_debug_number_line(center2, [1, 0, 0], undefined, undefined, 0xee0000)
+        engine.draw_debug_number_line(center2, [0, 1, 0], undefined, undefined, 0x00ee00)
+
+        let point1 = tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1]
+        let point2 = tge.get_gizmo_pose_as_SO3_matrix_and_position(1)[1]
+        point2[2][0] = 0; // keep it in the plane for angle control
+
+        let v1 = sub_matrix_matrix(point1, center1);
+        let v1n = normalized_matrix(v1);
+
+        let v2 = sub_matrix_matrix(point2, center2);
+        let v2n = normalized_matrix(v2);
+
+        engine.draw_debug_vector(center1, point1, 0.005, undefined, 0x222222)
+        engine.draw_debug_vector(center2, point2, 0.005, undefined, 0x222222)
+
+        engine.draw_debug_vector(center1, add_matrix_matrix(center1, v1n), 0.02, undefined, 0xeeee00)
+        engine.draw_debug_vector(center2, add_matrix_matrix(center2, v2n), 0.02, undefined, 0xeeee00)
+
+        // Angle from second gizmo (roll about local x)
+        let vec2 = sub_matrix_matrix(point2, center2);
+        let theta = Math.atan2(vec2[1][0], vec2[0][0]);
+        settings.angle = theta;
+        tge.set_position_of_gizmo(1, [point2[0][0], point2[1][0], 0]);
+
+        // Roll about local x: R = R_align * Rx(theta)
+        let Rx = [
+            [1.0, 0.0, 0.0],
+            [0.0, Math.cos(theta), -Math.sin(theta)],
+            [0.0, Math.sin(theta),  Math.cos(theta)]
+        ];
+        // let R = mul_matrix_matrix(R_align, Rx);
+
+        let x = v1n;
+        let A = [
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1]
+        ];
+        // let A = fibonacci_sphere_matrix(100);
+        let tmp1 = softmin_matrix(abs_matrix(mul_matrix_matrix(A, x)), settings.kappa);
+        let tmp2 = vec3_to_so3_mat(x);
+        let tmp3 = mul_matrix_matrix(tmp2, transpose(A));
+        let y = normalized_matrix(mul_matrix_matrix(tmp3, tmp1));
+        let z = cross_product(x, y);
+        // x = mul_matrix_matrix(Rx, x);
+        // let y = mul_matrix_matrix(Rx, yp);
+        // let z = mul_matrix_matrix(Rx, zp);
+
+        let xx = unroll_matrix_to_list(x);
+        let yy = unroll_matrix_to_list(y);
+        let zz = unroll_matrix_to_list(z);
+
+        let R1 = [
+            [xx[0], yy[0], zz[0] ],
+            [xx[1], yy[1], zz[1] ],
+            [xx[2], yy[2], zz[2] ]
+        ];
+
+        let R = mul_matrix_matrix(R1, Rx);
+
+        // expose components for debugging
+        // settings.rot_axis_x = x[0][0];
+        // settings.rot_axis_y = x[1][0];
+        // settings.rot_axis_z = x[2][0];
+
+        set_object_orientation_from_SO3_matrix(engine, 0, R);
+
+        let columns = get_columns(R);
+        let a = unroll_matrix_to_list(columns[0]);
+        let b = unroll_matrix_to_list(columns[1]);
+        let c = unroll_matrix_to_list(columns[2]);
+
+        engine.draw_debug_vector([0,0,0], add_matrix_matrix([0,0,0], a), 0.015, undefined, 0x660000)
+        engine.draw_debug_vector([0,0,0], add_matrix_matrix([0,0,0], b), 0.015, undefined, 0x006600)
+        engine.draw_debug_vector([0,0,0], add_matrix_matrix([0,0,0], c), 0.015, undefined, 0x000066)
+
+        refresh_displays(gui);
+    });
+
+</script>
+</body>
+</html>

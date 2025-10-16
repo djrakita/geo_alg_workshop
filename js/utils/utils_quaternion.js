@@ -133,3 +133,22 @@ export function sandwich_product_scalar_vector_quaternion_and_point(q, p) {
     let qq = convert_scalar_vector_to_wxyz_quaternion(q);
     return sandwich_product_wxyz_quaternion_and_point(qq, p);
 }
+
+export function convert_wxyz_quaternion_to_rotation_matrix(q) {
+    q = unroll_matrix_to_list(q);
+    let w = q[0]; let x = q[1]; let y = q[2]; let z = q[3];
+
+    let R00 = 1.0 - 2.0*(y*y + z*z);
+    let R01 = 2.0*(x*y - w*z);
+    let R02 = 2.0*(x*z + w*y);
+    let R10 = 2.0*(x*y + w*z);
+    let R11 = 1.0 - 2.0*(x*x + z*z);
+    let R12 = 2.0*(y*z - w*x);
+    let R20 = 2.0*(x*z - w*y);
+    let R21 = 2.0*(y*z + w*x);
+    let R22 = 1.0-2.0*(x*x + y*y);
+
+    let R = [[R00, R01, R02], [R10, R11, R12], [R20, R21, R22]];
+
+    return R;
+}

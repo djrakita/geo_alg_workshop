@@ -30,6 +30,7 @@
     import {mul_matrix_matrix} from "../js/utils/utils_math.js";
     import {identity_matrix} from "../js/utils/utils_math.js";
     import {transpose} from "../js/utils/utils_math.js";
+    import {get_columns, unroll_matrix_to_list} from "../js/utils/utils_math.js";
 
     let center1_y = -5;
     let center2_y = -2.5;
@@ -160,6 +161,15 @@
         settings.rot_axis_z = x[2][0];
 
         set_object_orientation_from_SO3_matrix(engine, 0, R);
+
+        let columns = get_columns(R);
+        let a = unroll_matrix_to_list(columns[0]);
+        let b = unroll_matrix_to_list(columns[1]);
+        let c = unroll_matrix_to_list(columns[2]);
+
+        engine.draw_debug_vector([0,0,0], add_matrix_matrix([0,0,0], a), 0.015, undefined, 0x660000)
+        engine.draw_debug_vector([0,0,0], add_matrix_matrix([0,0,0], b), 0.015, undefined, 0x006600)
+        engine.draw_debug_vector([0,0,0], add_matrix_matrix([0,0,0], c), 0.015, undefined, 0x000066)
 
         refresh_displays(gui);
     });

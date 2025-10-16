@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Multi-Anchor Tangent Blend (Pole Smoothing)</title>
+    <script src="../../js/setup/setup_mathjax.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+<script type="module">
+    import {ThreeEngine} from '../js/utils/utils_three.js'
+    import {TransformGizmoEngine} from "../js/utils/utils_transform_gizmo.js";
+    import {get_default_lil_gui, refresh_displays} from "../js/utils/utils_three.js";
+
+    import {
+        add_matrix_matrix,
+        sub_matrix_matrix,
+        mul_matrix_matrix,
+        mul_matrix_scalar,
+        identity_matrix,
+        transpose,
+        abs_matrix,
+        normalized_matrix,
+        cross_product,
+        unroll_matrix_to_list,
+        dot_product,
+        fibonacci_sphere_matrix,
+        get_columns
+    } from "../js/utils/utils_math.js";
+
+    import {set_object_orientation_from_SO3_matrix} from "../js/utils/utils_transforms.js";
+    import {vec3_to_so3_mat} from "../js/utils/utils_exp_and_log.js";
+    import {softmin_matrix} from "../js/utils/utils_math.js";
+
+    // ---------------------------
+    // Scene layout
+    // ---------------------------
+    const center1_y = -5;
+    const center2_y = -2.5;
+
+    const center1 = [[0], [center1_y], [0]];
+    const center2 = [[0], [center2_y], [0]];
+
+    const engine = ThreeEngine.new_default_3d();
+
+    // ---------------------------
+    // GUI
+    // ---------------------------
+    const settings = {
+        kappa: 0.12,   // softmin temperature (higher = smoother blend)
+        eps: 0.001,    // tiny bias to break ties deterministically
+        K: 24          // number of anchors on the sphere
+    };
+
+    const actions = {
+        reset: () => {
+            tge.set_position_of_gizmo(0, [1, center1_y, 0]);
+            tge.set_position_of_gizmo(1, [0, center2_y + 1, 0]);
+            refresh_displays(gui);
+        },
+        regen_anchors: () => {
+            regenerateAnchors();
+            refresh_displays(gui);
+        }
+    };
+
+    const gui = get_default_lil_gui();
+    gui.add(settings, 'kappa', 0.01, 1.0, 0.001).name('softmin kappa');
+    gui.add(settings, 'eps', 0.0, 0.01, 0.0001).name('bias eps');
+    gui.add(settings, 'K', 6, 200, 1).name('anchors K').onFinishChange(actions.regen_anchors);
+    gui.add(actions, 'regen_anchors').name('regenerate');
+    gui.add(actions, 'reset');
+
+    // ---------------------------
+    // Gizmos + mesh
+    // ---------------------------
+    const tge = new TransformGizmoEngine(engine);
+
+    engine.add_suzanne_monkey_as_mesh_object(0x00eeee);
+    engine.toggle_mesh_object_wireframe_visibility(0);
+    engine.set_mesh_object_visibility(0, false);
+
+    tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [1, center1_y, 0], 0.3);
+    tge.add_gizmo_SO3_matrix_and_position(engine, undefined, [0, center2_y + 1, 0], 0.3);
+
+    // ---------------------------
+    // Anchors & helpers
+    // ---------------------------
+    let A = fibonacci_sphere_matrix(settings.K); // K x 3
+
+    // Per-anchor constant bias vector c (K x 1), distinct & centered-ish
+    // We'll use a low-discrepancy style ramp and center it so sum(c)=0.
+    let C = null;
+
+    function regenerateAnchors() {
+        A = fibonacci_sphere_matrix(settings.K);
+        // build C = [ (i+0.5)/K - 0.5 ] as a Kx1 column
+        C = Array.from({length: settings.K}, (_, i) => {
+            const val = ( (i + 0.5) / settings.K ) - 0.5;
+            return [val];
+        });
+    }
+    regenerateAnchors();
+
+    // ---------------------------
+    // Animation loop
+    // ---------------------------
+    engine.animation_loop(() => {
+        // axes at centers
+        engine.draw_debug_number_line(center1, [1, 0, 0], undefined, undefined, 0xee0000);
+        engine.draw_debug_number_line(center1, [0, 1, 0], undefined, undefined, 0x00ee00);
+        engine.draw_debug_number_line(center1, [0, 0, 1], undefined, undefined, 0x0000ee);
+
+        engine.draw_debug_number_line(center2, [1, 0, 0], undefined, undefined, 0xee0000);
+        engine.draw_debug_number_line(center2, [0, 1, 0], undefined, undefined, 0x00ee00);
+
+        // gizmo points
+        let point1 = tge.get_gizmo_pose_as_SO3_matrix_and_position(0)[1];
+        let point2 = tge.get_gizmo_pose_as_SO3_matrix_and_position(1)[1];
+        point2[2][0] = 0; // keep in plane for angle control
+
+        // vectors & normals
+        let v1 = sub_matrix_matrix(point1, center1);
+        let x  = normalized_matrix(v1);
+
+        let v2  = sub_matrix_matrix(point2, center2);
+        let v2n = normalized_matrix(v2);
+
+        engine.draw_debug_vector(center1, point1, 0.005, undefined, 0x222222);
+        engine.draw_debug_vector(center2, point2, 0.005, undefined, 0x222222);
+
+        engine.draw_debug_vector(center1, add_matrix_matrix(center1, x), 0.02, undefined, 0xeeee00);
+        engine.draw_debug_vector(center2, add_matrix_matrix(center2, v2n), 0.02, undefined, 0xeeee00);
+
+        // roll angle (about local x) from second gizmo
+        const vec2  = sub_matrix_matrix(point2, center2);
+        const theta = Math.atan2(vec2[1][0], vec2[0][0]);
+        tge.set_position_of_gizmo(1, [point2[0][0], point2[1][0], 0]);
+
+        // roll matrix about local x
+        const Rx = [
+            [1.0, 0.0, 0.0],
+            [0.0, Math.cos(theta), -Math.sin(theta)],
+            [0.0, Math.sin(theta),  Math.cos(theta)]
+        ];
+
+        // =========================
+        // Multi-anchor blend (core)
+        // =========================
+
+        // s = A x   (K x 1), each entry s_i = a_i^T x
+        const s = mul_matrix_matrix(A, x); // Kx1
+
+        // logits for softmin: we use -s (equivalent to (1 - s) up to a constant)
+        // add tiny per-anchor constant bias eps * C to kill ties
+        // logits = (-s) + eps*C
+        const neg_s = mul_matrix_scalar(s, -1.0);
+        const logits = add_matrix_matrix(neg_s, mul_matrix_scalar(C, settings.eps)); // Kx1
+
+        // weights w = softmin(logits, kappa)  (Kx1, sums to 1)
+        const w = softmin_matrix(logits, settings.kappa);
+
+        // P = A - s x^T   (Kx3), project each anchor into tangent plane at x
+        const xT = transpose(x);                 // 1x3
+        const sxT = mul_matrix_matrix(s, xT);    // Kx3
+        const P = sub_matrix_matrix(A, sxT);     // Kx3
+
+        // y_raw = P^T w  (3x1); then normalize
+        const y_raw = mul_matrix_matrix(transpose(P), w); // 3x1
+        let y = normalized_matrix(y_raw);                 // 3x1
+
+        // Guard: if degenerate (rare), fall back to a fixed projected axis
+        if (!isFinite(y[0][0]) || !isFinite(y[1][0]) || !isFinite(y[2][0])) {
+            const e = [[0],[0],[1]];
+            const y_fallback = sub_matrix_matrix(e, mul_matrix_scalar(x, dot_product(e, x)));
+            y = normalized_matrix(y_fallback);
+        }
+
+        const z = cross_product(x, y); // 3x1
+
+        // Build R1 = [x y z], then R = R1 * Rx
+        const xx = unroll_matrix_to_list(x);
+        const yy = unroll_matrix_to_list(y);
+        const zz = unroll_matrix_to_list(z);
+
+        const R1 = [
+            [xx[0], yy[0], zz[0]],
+            [xx[1], yy[1], zz[1]],
+            [xx[2], yy[2], zz[2]]
+        ];
+
+        const R = mul_matrix_matrix(R1, Rx);
+
+        set_object_orientation_from_SO3_matrix(engine, 0, R);
+
+        // debug: draw frame at origin
+        const columns = get_columns(R);
+        const a = unroll_matrix_to_list(columns[0]);
+        const b = unroll_matrix_to_list(columns[1]);
+        const c = unroll_matrix_to_list(columns[2]);
+
+        engine.draw_debug_vector([0,0,0], add_matrix_matrix([0,0,0], a), 0.015, undefined, 0x660000);
+        engine.draw_debug_vector([0,0,0], add_matrix_matrix([0,0,0], b), 0.015, undefined, 0x006600);
+        engine.draw_debug_vector([0,0,0], add_matrix_matrix([0,0,0], c), 0.015, undefined, 0x000066);
+
+        refresh_displays(gui);
+    });
+</script>
+</body>
+</html>
